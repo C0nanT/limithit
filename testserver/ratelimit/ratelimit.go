@@ -7,18 +7,18 @@ import (
 )
 
 type Limiter struct {
-	mu        sync.Mutex
-	tokens    float64
-	capacity  float64
-	rate      float64
+	mu         sync.Mutex
+	tokens     float64
+	capacity   float64
+	rate       float64
 	lastRefill time.Time
 }
 
 func New(rps, burst float64) *Limiter {
 	return &Limiter{
-		tokens:    burst,
-		capacity:  burst,
-		rate:      rps,
+		tokens:     burst,
+		capacity:   burst,
+		rate:       rps,
 		lastRefill: time.Now(),
 	}
 }

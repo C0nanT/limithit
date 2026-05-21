@@ -25,30 +25,30 @@ type LogEntry struct {
 }
 
 type Snapshot struct {
-	TotalGET       int64     `json:"total_get"`
-	TotalPOST      int64     `json:"total_post"`
-	Total429       int64     `json:"total_429"`
-	TotalRequests  int64     `json:"total_requests"`
-	AvgLatencyMs   float64   `json:"avg_latency_ms"`
-	CurrentRPS     float64   `json:"current_rps"`
-	Timeline       []int64   `json:"timeline"`
-	LatencyBuckets []int64   `json:"latency_buckets"`
+	TotalGET       int64      `json:"total_get"`
+	TotalPOST      int64      `json:"total_post"`
+	Total429       int64      `json:"total_429"`
+	TotalRequests  int64      `json:"total_requests"`
+	AvgLatencyMs   float64    `json:"avg_latency_ms"`
+	CurrentRPS     float64    `json:"current_rps"`
+	Timeline       []int64    `json:"timeline"`
+	LatencyBuckets []int64    `json:"latency_buckets"`
 	RecentLog      []LogEntry `json:"recent_log"`
 }
 
 type MetricsStore struct {
 	mu sync.RWMutex
 
-	totalGET      int64
-	totalPOST     int64
-	total429      int64
-	totalRequests int64
+	totalGET       int64
+	totalPOST      int64
+	total429       int64
+	totalRequests  int64
 	totalLatencyUs int64 // microseconds for precision
 
 	// latency histogram buckets: <5, 5-10, 10-25, 25-50, 50-100, 100-250, 250+ms
 	latencyBuckets [7]int64
 
-	timeline    [timelineSize]TimeSlot
+	timeline     [timelineSize]TimeSlot
 	timelineHead int
 
 	recentLog []LogEntry
