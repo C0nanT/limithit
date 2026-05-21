@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>testserver — ratelash dashboard</title>
+<style>
+  :root {
+    --bg: #0d1117;
+    --surface: #161b22;
+    --border: #30363d;
+    --text: #e6edf3;
+    --muted: #7d8590;
+    --green: #3fb950;
+    --yellow: #d29922;
+    --red: #f85149;
+    --blue: #58a6ff;
+    --purple: #bc8cff;
+    --accent: #238636;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Cascadia Code', 'Fira Code', 'JetBrains Mono', monospace;
+    font-size: 13px;
+    padding: 16px;
+    min-height: 100vh;
+  }
+  header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 16px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--border);
+  }
+  header h1 { font-size: 16px; font-weight: 600; color: var(--text); letter-spacing: 0.03em; }
+  header .tag { font-size: 11px; color: var(--muted); }
+  #status-dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: var(--muted); display: inline-block; margin-right: 6px;
+    transition: background 0.3s;
+  }
+  #status-dot.live { background: var(--green); box-shadow: 0 0 6px var(--green); }
+
+  .stat-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 10px;
+    margin-bottom: 14px;
+  }
+  .stat-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 14px 16px;
+  }
+  .stat-card .label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 6px; }
+  .stat-card .value { font-size: 28px; font-weight: 700; line-height: 1; }
+  .stat-card .sub { font-size: 11px; color: var(--muted); margin-top: 4px; }
+  .stat-card.green .value { color: var(--green); }
+  .stat-card.blue .value { color: var(--blue); }
+  .stat-card.yellow .value { color: var(--yellow); }
+  .stat-card.purple .value { color: var(--purple); }
+
+  .panel {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 14px 16px;
+    margin-bottom: 14px;
+  }
+  .panel-title {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--muted);
+    margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .panel-title span.rps-badge {
+    font-size: 13px;
+    color: var(--blue);
+    font-weight: 600;
+    text-transform: none;
+    letter-spacing: 0;
+  }
+
+  #sparkline-canvas {
+    width: 100%;
+    height: 80px;
+    display: block;
+  }
+
+  .hist-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 5px;
+    font-size: 12px;
+  }
+  .hist-label { width: 70px; color: var(--muted); text-align: right; flex-shrink: 0; }
+  .hist-bar-wrap { flex: 1; background: #21262d; border-radius: 2px; height: 14px; overflow: hidden; }
+  .hist-bar { height: 100%; background: var(--blue); border-radius: 2px; transition: width 0.4s ease; min-width: 0; }
+  .hist-pct { width: 44px; text-align: right; color: var(--text); flex-shrink: 0; }
+
+  #log-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12px;
+  }
+  #log-table th {
+    text-align: left;
+    color: var(--muted);
+    font-weight: 500;
+    padding: 0 8px 8px 0;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    font-size: 11px;
+    border-bottom: 1px solid var(--border);
+  }
+  #log-table td {
+    padding: 5px 8px 5px 0;
+    border-bottom: 1px solid #21262d;
+    white-space: nowrap;
+  }
+  .method-get  { color: var(--green); }
+  .method-post { color: var(--blue); }
+  .status-2xx  { color: var(--green); }
+  .status-429  { color: var(--yellow); }
+  .status-5xx  { color: var(--red); }
+  .ts-col { color: var(--muted); font-size: 11px; }
+
+  @media (max-width: 700px) {
+    .stat-grid { grid-template-columns: repeat(2, 1fr); }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div>
+    <h1><span id="status-dot"></span>testserver dashboard</h1>
+    <div class="tag">ratelash target · real-time metrics via SSE</div>
+  </div>
+  <div class="tag" id="port-label">localhost:8080</div>
+</header>
+
+<div class="stat-grid">
+  <div class="stat-card green">
+    <div class="label">GET requests</div>
+    <div class="value" id="stat-get">0</div>
+    <div class="sub">GET /api/ping</div>
+  </div>
+  <div class="stat-card blue">
+    <div class="label">POST requests</div>
+    <div class="value" id="stat-post">0</div>
+    <div class="sub">POST /api/echo</div>
+  </div>
+  <div class="stat-card yellow">
+    <div class="label">429 rate limited</div>
+    <div class="value" id="stat-429">0</div>
+    <div class="sub" id="stat-429-pct">0% of total</div>
+  </div>
+  <div class="stat-card purple">
+    <div class="label">avg latency</div>
+    <div class="value" id="stat-latency">0</div>
+    <div class="sub">ms per request</div>
+  </div>
+</div>
+
+<div class="panel">
+  <div class="panel-title">
+    req/s — last 60 seconds
+    <span class="rps-badge" id="rps-badge">0 req/s</span>
+  </div>
+  <canvas id="sparkline-canvas"></canvas>
+</div>
+
+<div class="panel">
+  <div class="panel-title">latency distribution</div>
+  <div id="hist-container">
+    <div class="hist-row"><div class="hist-label">&lt;5ms</div><div class="hist-bar-wrap"><div class="hist-bar" id="hb0" style="width:0%"></div></div><div class="hist-pct" id="hp0">0%</div></div>
+    <div class="hist-row"><div class="hist-label">5–10ms</div><div class="hist-bar-wrap"><div class="hist-bar" id="hb1" style="width:0%"></div></div><div class="hist-pct" id="hp1">0%</div></div>
+    <div class="hist-row"><div class="hist-label">10–25ms</div><div class="hist-bar-wrap"><div class="hist-bar" id="hb2" style="width:0%"></div></div><div class="hist-pct" id="hp2">0%</div></div>
+    <div class="hist-row"><div class="hist-label">25–50ms</div><div class="hist-bar-wrap"><div class="hist-bar" id="hb3" style="width:0%"></div></div><div class="hist-pct" id="hp3">0%</div></div>
+    <div class="hist-row"><div class="hist-label">50–100ms</div><div class="hist-bar-wrap"><div class="hist-bar" id="hb4" style="width:0%"></div></div><div class="hist-pct" id="hp4">0%</div></div>
+    <div class="hist-row"><div class="hist-label">100–250ms</div><div class="hist-bar-wrap"><div class="hist-bar" id="hb5" style="width:0%"></div></div><div class="hist-pct" id="hp5">0%</div></div>
+    <div class="hist-row"><div class="hist-label">&gt;250ms</div><div class="hist-bar-wrap"><div class="hist-bar" id="hb6" style="width:0%"></div></div><div class="hist-pct" id="hp6">0%</div></div>
+  </div>
+</div>
+
+<div class="panel">
+  <div class="panel-title">recent requests (last 20)</div>
+  <table id="log-table">
+    <thead>
+      <tr>
+        <th>method</th>
+        <th>path</th>
+        <th>status</th>
+        <th>latency</th>
+        <th>time</th>
+      </tr>
+    </thead>
+    <tbody id="log-body"></tbody>
+  </table>
+</div>
+
+<script>
+  const dot = document.getElementById('status-dot');
+  const canvas = document.getElementById('sparkline-canvas');
+  const ctx = canvas.getContext('2d');
+  let timeline = new Array(60).fill(0);
+
+  function fmt(n) {
+    if (n >= 1e6) return (n/1e6).toFixed(1) + 'M';
+    if (n >= 1e3) return (n/1e3).toFixed(1) + 'K';
+    return String(n);
+  }
+
+  function drawSparkline(data) {
+    const dpr = window.devicePixelRatio || 1;
+    const w = canvas.clientWidth;
+    const h = canvas.clientHeight;
+    canvas.width = w * dpr;
+    canvas.height = h * dpr;
+    ctx.scale(dpr, dpr);
+
+    const max = Math.max(...data, 1);
+    const barW = w / data.length;
+    const pad = 4;
+
+    ctx.clearRect(0, 0, w, h);
+
+    // grid lines
+    ctx.strokeStyle = '#21262d';
+    ctx.lineWidth = 1;
+    for (let i = 1; i <= 3; i++) {
+      const y = Math.round(h * i / 4) + 0.5;
+      ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(w, y); ctx.stroke();
+    }
+
+    // gradient fill under line
+    const gradient = ctx.createLinearGradient(0, 0, 0, h);
+    gradient.addColorStop(0, 'rgba(88,166,255,0.35)');
+    gradient.addColorStop(1, 'rgba(88,166,255,0.02)');
+
+    ctx.beginPath();
+    ctx.moveTo(0, h);
+    data.forEach((v, i) => {
+      const x = i * barW + barW / 2;
+      const y = h - pad - (v / max) * (h - pad * 2);
+      if (i === 0) ctx.lineTo(x, y);
+      else ctx.lineTo(x, y);
+    });
+    ctx.lineTo(w, h);
+    ctx.closePath();
+    ctx.fillStyle = gradient;
+    ctx.fill();
+
+    // line
+    ctx.beginPath();
+    ctx.strokeStyle = '#58a6ff';
+    ctx.lineWidth = 1.5;
+    ctx.lineJoin = 'round';
+    data.forEach((v, i) => {
+      const x = i * barW + barW / 2;
+      const y = h - pad - (v / max) * (h - pad * 2);
+      if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+    });
+    ctx.stroke();
+
+    // max label
+    ctx.fillStyle = '#7d8590';
+    ctx.font = '10px monospace';
+    ctx.fillText('max: ' + fmt(max), 4, 12);
+  }
+
+  function statusClass(s) {
+    if (s === 429) return 'status-429';
+    if (s >= 500) return 'status-5xx';
+    return 'status-2xx';
+  }
+
+  function applySnapshot(snap) {
+    document.getElementById('stat-get').textContent = fmt(snap.total_get);
+    document.getElementById('stat-post').textContent = fmt(snap.total_post);
+    document.getElementById('stat-429').textContent = fmt(snap.total_429);
+    document.getElementById('stat-latency').textContent = snap.avg_latency_ms.toFixed(2);
+
+    const pct = snap.total_requests > 0
+      ? ((snap.total_429 / snap.total_requests) * 100).toFixed(1)
+      : '0';
+    document.getElementById('stat-429-pct').textContent = pct + '% of total';
+
+    document.getElementById('rps-badge').textContent = snap.current_rps.toFixed(1) + ' req/s';
+
+    timeline = snap.timeline;
+    drawSparkline(timeline);
+
+    // histogram
+    const total = snap.latency_buckets.reduce((a, b) => a + b, 0);
+    const maxBucket = Math.max(...snap.latency_buckets, 1);
+    snap.latency_buckets.forEach((v, i) => {
+      const pctBar = (v / maxBucket) * 100;
+      const pctLabel = total > 0 ? ((v / total) * 100).toFixed(1) : '0';
+      document.getElementById('hb' + i).style.width = pctBar + '%';
+      document.getElementById('hp' + i).textContent = pctLabel + '%';
+    });
+
+    // recent log
+    const tbody = document.getElementById('log-body');
+    tbody.innerHTML = '';
+    (snap.recent_log || []).forEach(entry => {
+      const tr = document.createElement('tr');
+      const ts = new Date(entry.timestamp);
+      const tsStr = ts.toTimeString().split(' ')[0] + '.' + String(ts.getMilliseconds()).padStart(3, '0');
+      tr.innerHTML = `
+        <td class="method-${entry.method.toLowerCase()}">${entry.method}</td>
+        <td>${entry.path}</td>
+        <td class="${statusClass(entry.status)}">${entry.status}</td>
+        <td>${entry.duration_ms.toFixed(2)}ms</td>
+        <td class="ts-col">${tsStr}</td>
+      `;
+      tbody.appendChild(tr);
+    });
+  }
+
+  function connect() {
+    const es = new EventSource('/metrics');
+    es.onopen = () => { dot.classList.add('live'); };
+    es.onmessage = (e) => {
+      try { applySnapshot(JSON.parse(e.data)); } catch(err) {}
+    };
+    es.onerror = () => {
+      dot.classList.remove('live');
+      es.close();
+      setTimeout(connect, 2000);
+    };
+  }
+
+  // init canvas size
+  window.addEventListener('resize', () => drawSparkline(timeline));
+  drawSparkline(timeline);
+  connect();
+
+  // show port from current URL
+  document.getElementById('port-label').textContent = location.host;
+</script>
+</body>
+</html>

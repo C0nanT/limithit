@@ -1,0 +1,15 @@
+# Compiled binaries
+ratelash
+testserver/testserver
+
+# Go build cache / test artifacts
+*.test
+*.out
+/vendor/
+
+# Claude Code local settings
+.claude/
+
+# OS
+.DS_Store
+Thumbs.db
