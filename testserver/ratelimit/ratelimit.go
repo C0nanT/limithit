@@ -52,7 +52,7 @@ func (l *Limiter) Allow() bool {
 	return false
 }
 
-func (l *Limiter) Denied() int64  { return l.denied.Load() }
+func (l *Limiter) Denied() int64   { return l.denied.Load() }
 func (l *Limiter) LastSeen() int64 { return l.lastSeen.Load() }
 
 // Registry keeps a per-key Limiter. Keys are typically client IPs.
