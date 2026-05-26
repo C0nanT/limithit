@@ -130,9 +130,20 @@
   .method-get  { color: var(--green); }
   .method-post { color: var(--blue); }
   .status-2xx  { color: var(--green); }
+  .status-401  { color: var(--yellow); }
+  .status-423  { color: var(--red); }
   .status-429  { color: var(--yellow); }
+  .status-431  { color: var(--red); }
+  .status-413  { color: var(--red); }
   .status-5xx  { color: var(--red); }
   .ts-col { color: var(--muted); font-size: 11px; }
+
+  #top-ips-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  #top-ips-table th { text-align: left; color: var(--muted); font-weight: 500; padding: 0 8px 8px 0; text-transform: uppercase; letter-spacing: 0.06em; font-size: 11px; border-bottom: 1px solid var(--border); }
+  #top-ips-table td { padding: 5px 8px 5px 0; border-bottom: 1px solid #21262d; font-variant-numeric: tabular-nums; }
+  #top-ips-table td.ip { color: var(--blue); }
+  #top-ips-table td.denied { color: var(--red); text-align: right; }
+  #top-ips-empty { color: var(--muted); font-size: 12px; padding: 6px 0; }
 
   @media (max-width: 700px) {
     .stat-grid { grid-template-columns: repeat(2, 1fr); }
@@ -191,6 +202,20 @@
     <div class="hist-row"><div class="hist-label">100–250ms</div><div class="hist-bar-wrap"><div class="hist-bar" id="hb5" style="width:0%"></div></div><div class="hist-pct" id="hp5">0%</div></div>
     <div class="hist-row"><div class="hist-label">&gt;250ms</div><div class="hist-bar-wrap"><div class="hist-bar" id="hb6" style="width:0%"></div></div><div class="hist-pct" id="hp6">0%</div></div>
   </div>
+</div>
+
+<div class="panel">
+  <div class="panel-title">top offenders — per-IP 429 count (last 10)</div>
+  <table id="top-ips-table">
+    <thead>
+      <tr>
+        <th>ip</th>
+        <th style="text-align:right">429 denied</th>
+      </tr>
+    </thead>
+    <tbody id="top-ips-body"></tbody>
+  </table>
+  <div id="top-ips-empty">no offenders yet — per-IP limiter has not denied any requests</div>
 </div>
 
 <div class="panel">
@@ -280,8 +305,13 @@
   }
 
   function statusClass(s) {
+    if (s === 401) return 'status-401';
+    if (s === 413) return 'status-413';
+    if (s === 423) return 'status-423';
     if (s === 429) return 'status-429';
+    if (s === 431) return 'status-431';
     if (s >= 500) return 'status-5xx';
+    if (s >= 400) return 'status-429';
     return 'status-2xx';
   }
 
@@ -310,6 +340,22 @@
       document.getElementById('hb' + i).style.width = pctBar + '%';
       document.getElementById('hp' + i).textContent = pctLabel + '%';
     });
+
+    // top offenders
+    const tipsBody = document.getElementById('top-ips-body');
+    const tipsEmpty = document.getElementById('top-ips-empty');
+    tipsBody.innerHTML = '';
+    const tips = snap.top_ips || [];
+    if (tips.length === 0) {
+      tipsEmpty.style.display = 'block';
+    } else {
+      tipsEmpty.style.display = 'none';
+      tips.forEach(s => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `<td class="ip">${s.ip}</td><td class="denied">${fmt(s.denied)}</td>`;
+        tipsBody.appendChild(tr);
+      });
+    }
 
     // recent log
     const tbody = document.getElementById('log-body');

@@ -3,10 +3,8 @@ package client
 import (
 	"context"
 	"errors"
-	"io"
 	"net"
 	"net/http"
-	"strings"
 	"time"
 )
 
@@ -25,6 +23,8 @@ type Result struct {
 	Duration time.Duration
 }
 
+// New returns an *http.Client whose Transport is tuned for the given
+// concurrency level. The returned client honors cfg.Timeout per request.
 func New(cfg Config, concurrency int) *http.Client {
 	base, ok := http.DefaultTransport.(*http.Transport)
 	var tr *http.Transport
@@ -47,42 +47,7 @@ func New(cfg Config, concurrency int) *http.Client {
 	}
 }
 
-func Do(ctx context.Context, hc *http.Client, cfg Config) Result {
-	start := time.Now()
-
-	var bodyReader io.Reader
-	if cfg.Body != "" {
-		bodyReader = strings.NewReader(cfg.Body)
-	}
-
-	req, err := http.NewRequestWithContext(ctx, cfg.Method, cfg.URL, bodyReader)
-	if err != nil {
-		return Result{Err: err, Duration: time.Since(start)}
-	}
-	for k, vs := range cfg.Headers {
-		for _, v := range vs {
-			req.Header.Add(k, v)
-		}
-	}
-
-	resp, err := hc.Do(req)
-	if err != nil {
-		return Result{
-			Err:      err,
-			Timeout:  isTimeout(err),
-			Duration: time.Since(start),
-		}
-	}
-	defer resp.Body.Close()
-	_, _ = io.Copy(io.Discard, resp.Body)
-
-	return Result{
-		Status:   resp.StatusCode,
-		Duration: time.Since(start),
-	}
-}
-
-func isTimeout(err error) bool {
+func IsTimeout(err error) bool {
 	if errors.Is(err, context.DeadlineExceeded) {
 		return true
 	}

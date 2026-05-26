@@ -34,6 +34,18 @@ type Snapshot struct {
 	Timeline       []int64    `json:"timeline"`
 	LatencyBuckets []int64    `json:"latency_buckets"`
 	RecentLog      []LogEntry `json:"recent_log"`
+	TopIPs         []IPStat   `json:"top_ips"`
+}
+
+type IPStat struct {
+	IP     string `json:"ip"`
+	Denied int64  `json:"denied"`
+}
+
+// OffenderSource lets the store fetch top-N denied IPs at snapshot time
+// without coupling to the ratelimit package directly.
+type OffenderSource interface {
+	TopOffenders(n int) []IPStat
 }
 
 type MetricsStore struct {
@@ -52,6 +64,8 @@ type MetricsStore struct {
 	timelineHead int
 
 	recentLog []LogEntry
+
+	offenderSrc OffenderSource
 }
 
 func New() *MetricsStore {
@@ -62,6 +76,12 @@ func New() *MetricsStore {
 	}
 	s.timelineHead = timelineSize - 1
 	return s
+}
+
+func (s *MetricsStore) SetOffenderSource(src OffenderSource) {
+	s.mu.Lock()
+	s.offenderSrc = src
+	s.mu.Unlock()
 }
 
 func (s *MetricsStore) Record(method, path string, status int, d time.Duration) {
@@ -169,6 +189,11 @@ func (s *MetricsStore) Snapshot() Snapshot {
 		log[i], log[j] = log[j], log[i]
 	}
 
+	var topIPs []IPStat
+	if s.offenderSrc != nil {
+		topIPs = s.offenderSrc.TopOffenders(10)
+	}
+
 	return Snapshot{
 		TotalGET:       s.totalGET,
 		TotalPOST:      s.totalPOST,
@@ -179,6 +204,7 @@ func (s *MetricsStore) Snapshot() Snapshot {
 		Timeline:       timeline,
 		LatencyBuckets: buckets,
 		RecentLog:      log,
+		TopIPs:         topIPs,
 	}
 }
 
