@@ -1,0 +1,21 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+ROOT="$(git rev-parse --show-toplevel)"
+
+fmt_check() {
+  local dir="$1"
+  local label="$2"
+  files=$(gofmt -l "$dir")
+  if [ -n "$files" ]; then
+    echo "❌ gofmt violations in [$label]:"
+    echo "$files"
+    echo "   Run: gofmt -w $dir"
+    exit 1
+  fi
+}
+
+fmt_check "$ROOT" "root"
+fmt_check "$ROOT/testserver" "testserver"
+
+echo "✅ pre-commit: gofmt OK"

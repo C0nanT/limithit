@@ -1,0 +1,29 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+ROOT="$(git rev-parse --show-toplevel)"
+
+run_checks() {
+  local dir="$1"
+  local label="$2"
+
+  echo "→ [$label] go build..."
+  (cd "$dir" && go build ./...) || { echo "❌ build failed in [$label]"; exit 1; }
+
+  echo "→ [$label] go vet..."
+  (cd "$dir" && go vet ./...) || { echo "❌ vet failed in [$label]"; exit 1; }
+
+  echo "→ [$label] gofmt..."
+  files=$(gofmt -l "$dir")
+  if [ -n "$files" ]; then
+    echo "❌ gofmt violations in [$label]:"
+    echo "$files"
+    echo "   Run: gofmt -w $dir"
+    exit 1
+  fi
+}
+
+run_checks "$ROOT" "root"
+run_checks "$ROOT/testserver" "testserver"
+
+echo "✅ pre-push: all checks passed"
