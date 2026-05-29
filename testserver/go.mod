@@ -1,3 +1,10 @@
 module github.com/conantorreswf/limithit/testserver
 
-go 1.22
+go 1.25.0
+
+require (
+	github.com/gorilla/websocket v1.5.3
+	golang.org/x/net v0.55.0
+)
+
+require golang.org/x/text v0.37.0 // indirect

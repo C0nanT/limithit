@@ -26,12 +26,13 @@ type AuthHandler struct {
 	mu       sync.Mutex
 	attempts map[string]*authAttempt
 
-	username       string
-	password       string
-	maxFails       int
-	failWindow     time.Duration
-	lockoutWindow  time.Duration
-	trustedProxies []netip.Prefix
+	username        string
+	password        string
+	maxFails        int
+	failWindow      time.Duration
+	lockoutWindow   time.Duration
+	trustedProxies  []netip.Prefix
+	DisableLockout  bool
 }
 
 func NewAuthHandler(user, pass string, trusted []netip.Prefix) *AuthHandler {
@@ -53,10 +54,12 @@ func (h *AuthHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	ip := ratelimit.ClientIP(r, h.trustedProxies)
 
-	if locked, until := h.locked(ip); locked {
-		w.Header().Set("Retry-After", retryAfterSeconds(until))
-		writeJSON(w, http.StatusLocked, map[string]string{"error": "account locked", "until": until.UTC().Format(time.RFC3339)})
-		return
+	if !h.DisableLockout {
+		if locked, until := h.locked(ip); locked {
+			w.Header().Set("Retry-After", retryAfterSeconds(until))
+			writeJSON(w, http.StatusLocked, map[string]string{"error": "account locked", "until": until.UTC().Format(time.RFC3339)})
+			return
+		}
 	}
 
 	var req AuthRequest

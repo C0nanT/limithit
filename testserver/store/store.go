@@ -24,17 +24,25 @@ type LogEntry struct {
 	Timestamp  time.Time `json:"timestamp"`
 }
 
+type ServerConfig struct {
+	Algo       string `json:"algo"`
+	MaxConns   int    `json:"max_conns"`
+	MaxStreams int    `json:"max_streams"`
+	Vulnerable string `json:"vulnerable,omitempty"`
+}
+
 type Snapshot struct {
-	TotalGET       int64      `json:"total_get"`
-	TotalPOST      int64      `json:"total_post"`
-	Total429       int64      `json:"total_429"`
-	TotalRequests  int64      `json:"total_requests"`
-	AvgLatencyMs   float64    `json:"avg_latency_ms"`
-	CurrentRPS     float64    `json:"current_rps"`
-	Timeline       []int64    `json:"timeline"`
-	LatencyBuckets []int64    `json:"latency_buckets"`
-	RecentLog      []LogEntry `json:"recent_log"`
-	TopIPs         []IPStat   `json:"top_ips"`
+	TotalGET       int64        `json:"total_get"`
+	TotalPOST      int64        `json:"total_post"`
+	Total429       int64        `json:"total_429"`
+	TotalRequests  int64        `json:"total_requests"`
+	AvgLatencyMs   float64      `json:"avg_latency_ms"`
+	CurrentRPS     float64      `json:"current_rps"`
+	Timeline       []int64      `json:"timeline"`
+	LatencyBuckets []int64      `json:"latency_buckets"`
+	RecentLog      []LogEntry   `json:"recent_log"`
+	TopIPs         []IPStat     `json:"top_ips"`
+	Config         ServerConfig `json:"config"`
 }
 
 type IPStat struct {
@@ -66,6 +74,7 @@ type MetricsStore struct {
 	recentLog []LogEntry
 
 	offenderSrc OffenderSource
+	config      ServerConfig
 }
 
 func New() *MetricsStore {
@@ -81,6 +90,12 @@ func New() *MetricsStore {
 func (s *MetricsStore) SetOffenderSource(src OffenderSource) {
 	s.mu.Lock()
 	s.offenderSrc = src
+	s.mu.Unlock()
+}
+
+func (s *MetricsStore) SetConfig(cfg ServerConfig) {
+	s.mu.Lock()
+	s.config = cfg
 	s.mu.Unlock()
 }
 
@@ -205,6 +220,7 @@ func (s *MetricsStore) Snapshot() Snapshot {
 		LatencyBuckets: buckets,
 		RecentLog:      log,
 		TopIPs:         topIPs,
+		Config:         s.config,
 	}
 }
 

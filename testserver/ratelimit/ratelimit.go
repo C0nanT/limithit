@@ -2,6 +2,7 @@ package ratelimit
 
 import (
 	"fmt"
+	"math"
 	"net"
 	"net/http"
 	"net/netip"
@@ -11,70 +12,84 @@ import (
 	"time"
 )
 
-// Limiter — token bucket for a single key (IP).
-type Limiter struct {
+// bucket is an internal token-bucket for a single key.
+type bucket struct {
 	mu         sync.Mutex
 	tokens     float64
 	capacity   float64
 	rate       float64
 	lastRefill time.Time
-	lastSeen   atomic.Int64 // unix nanos, atomic for GC sweep without holding mu
+	lastSeen   atomic.Int64
 	denied     atomic.Int64
 }
 
-func New(rps, burst float64) *Limiter {
-	l := &Limiter{
+func newBucket(rps, burst float64) *bucket {
+	b := &bucket{
 		tokens:     burst,
 		capacity:   burst,
 		rate:       rps,
 		lastRefill: time.Now(),
 	}
-	l.lastSeen.Store(time.Now().UnixNano())
-	return l
+	b.lastSeen.Store(time.Now().UnixNano())
+	return b
 }
 
-func (l *Limiter) Allow() bool {
-	l.lastSeen.Store(time.Now().UnixNano())
-	l.mu.Lock()
-	defer l.mu.Unlock()
+func (b *bucket) allow() (ok bool, remaining int, reset time.Time) {
+	b.lastSeen.Store(time.Now().UnixNano())
+	b.mu.Lock()
+	defer b.mu.Unlock()
 	now := time.Now()
-	elapsed := now.Sub(l.lastRefill).Seconds()
-	l.lastRefill = now
-	l.tokens += elapsed * l.rate
-	if l.tokens > l.capacity {
-		l.tokens = l.capacity
+	elapsed := now.Sub(b.lastRefill).Seconds()
+	b.lastRefill = now
+	b.tokens += elapsed * b.rate
+	if b.tokens > b.capacity {
+		b.tokens = b.capacity
 	}
-	if l.tokens >= 1 {
-		l.tokens--
-		return true
+	if b.tokens >= 1 {
+		b.tokens--
+		remaining = int(math.Max(0, math.Floor(b.tokens)))
+		return true, remaining, now
 	}
-	l.denied.Add(1)
-	return false
+	b.denied.Add(1)
+	secs := (1 - b.tokens) / b.rate
+	return false, 0, now.Add(time.Duration(secs * float64(time.Second)))
 }
 
-func (l *Limiter) Denied() int64   { return l.denied.Load() }
-func (l *Limiter) LastSeen() int64 { return l.lastSeen.Load() }
+func (b *bucket) Denied() int64   { return b.denied.Load() }
+func (b *bucket) LastSeen() int64 { return b.lastSeen.Load() }
 
-// Registry keeps a per-key Limiter. Keys are typically client IPs.
+// Registry is the token-bucket Limiter implementation.
 type Registry struct {
 	rate, burst float64
 	mu          sync.Mutex
-	limiters    map[string]*Limiter
-
-	stopGC chan struct{}
-	wg     sync.WaitGroup
+	limiters    map[string]*bucket
+	stopGC      chan struct{}
+	wg          sync.WaitGroup
 }
 
 func NewRegistry(rps, burst float64) *Registry {
 	r := &Registry{
 		rate:     rps,
 		burst:    burst,
-		limiters: make(map[string]*Limiter),
+		limiters: make(map[string]*bucket),
 		stopGC:   make(chan struct{}),
 	}
 	r.wg.Add(1)
 	go r.gcLoop()
 	return r
+}
+
+func (r *Registry) Capacity() int { return int(r.burst) }
+
+func (r *Registry) Allow(key string) (ok bool, remaining int, reset time.Time) {
+	r.mu.Lock()
+	b, exists := r.limiters[key]
+	if !exists {
+		b = newBucket(r.rate, r.burst)
+		r.limiters[key] = b
+	}
+	r.mu.Unlock()
+	return b.allow()
 }
 
 func (r *Registry) Close() {
@@ -100,37 +115,25 @@ func (r *Registry) sweep(maxIdle time.Duration) {
 	cutoff := time.Now().Add(-maxIdle).UnixNano()
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	for k, l := range r.limiters {
-		if l.LastSeen() < cutoff {
+	for k, b := range r.limiters {
+		if b.LastSeen() < cutoff {
 			delete(r.limiters, k)
 		}
 	}
-}
-
-func (r *Registry) For(key string) *Limiter {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-	l, ok := r.limiters[key]
-	if !ok {
-		l = New(r.rate, r.burst)
-		r.limiters[key] = l
-	}
-	return l
 }
 
 // TopOffenders returns up to n keys with the highest deny counts.
 func (r *Registry) TopOffenders(n int) []OffenderStat {
 	r.mu.Lock()
 	stats := make([]OffenderStat, 0, len(r.limiters))
-	for k, l := range r.limiters {
-		d := l.Denied()
+	for k, b := range r.limiters {
+		d := b.Denied()
 		if d == 0 {
 			continue
 		}
 		stats = append(stats, OffenderStat{Key: k, Denied: d})
 	}
 	r.mu.Unlock()
-	// partial sort
 	for i := 0; i < len(stats); i++ {
 		for j := i + 1; j < len(stats); j++ {
 			if stats[j].Denied > stats[i].Denied {
@@ -149,12 +152,14 @@ type OffenderStat struct {
 	Denied int64  `json:"denied"`
 }
 
-// ClientIP returns the client IP for a request. If r.RemoteAddr matches one of
-// the trusted CIDR ranges, the first parseable IP from X-Forwarded-For (or
-// X-Real-IP) is returned. Otherwise r.RemoteAddr is returned.
-//
-// trustedCIDRs may be empty — in that case all XFF headers are ignored,
-// neutralising spoofing from untrusted clients.
+// newTokenBucketLimiter is the factory used by the algo registry.
+func newTokenBucketLimiter(rate, burst float64) Limiter {
+	return NewRegistry(rate, burst)
+}
+
+// ClientIP returns the effective client IP for a request. If RemoteAddr matches
+// a trusted CIDR, the first parseable hop from X-Forwarded-For (or X-Real-IP)
+// is returned; otherwise RemoteAddr is used.
 func ClientIP(r *http.Request, trustedCIDRs []netip.Prefix) string {
 	remote := remoteHost(r.RemoteAddr)
 	if !ipInPrefixes(remote, trustedCIDRs) {
@@ -222,22 +227,34 @@ func ParseCIDRList(s string) ([]netip.Prefix, error) {
 	return out, nil
 }
 
-// Middleware wraps next with per-IP rate limiting. trustedCIDRs designates
-// proxy ranges whose XFF headers will be honoured.
-func Middleware(reg *Registry, trustedCIDRs []netip.Prefix, next http.Handler) http.Handler {
-	if reg == nil {
+// Middleware wraps next with per-IP rate limiting and writes RateLimit-* headers.
+func Middleware(lim Limiter, trustedCIDRs []netip.Prefix, next http.Handler) http.Handler {
+	if lim == nil {
 		return next
 	}
+	cap := lim.Capacity()
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		ip := ClientIP(r, trustedCIDRs)
-		if !reg.For(ip).Allow() {
-			w.Header().Set("Retry-After", "1")
+		ok, remaining, reset := lim.Allow(ip)
+		resetUnix := fmt.Sprintf("%d", reset.Unix())
+		if !ok {
+			secs := int(time.Until(reset).Seconds())
+			if secs < 1 {
+				secs = 1
+			}
+			w.Header().Set("RateLimit-Limit", fmt.Sprintf("%d", cap))
+			w.Header().Set("RateLimit-Remaining", "0")
+			w.Header().Set("RateLimit-Reset", resetUnix)
+			w.Header().Set("Retry-After", fmt.Sprintf("%d", secs))
 			w.Header().Set("Content-Type", "application/json")
 			w.Header().Set("X-RateLimit-Key", ip)
 			w.WriteHeader(http.StatusTooManyRequests)
 			w.Write([]byte(`{"error":"rate limit exceeded"}`))
 			return
 		}
+		w.Header().Set("RateLimit-Limit", fmt.Sprintf("%d", cap))
+		w.Header().Set("RateLimit-Remaining", fmt.Sprintf("%d", remaining))
+		w.Header().Set("RateLimit-Reset", resetUnix)
 		next.ServeHTTP(w, r)
 	})
 }
