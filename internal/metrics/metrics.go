@@ -7,7 +7,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/conantorreswf/ratelash/internal/client"
+	"github.com/conantorreswf/limithit/internal/client"
 )
 
 type Collector struct {
@@ -155,9 +155,9 @@ func Finalize(c *Collector, dur time.Duration) *Report {
 
 func (r *Report) String() string {
 	var b strings.Builder
-	title := "ratelash summary"
+	title := "limithit summary"
 	if r.Tag != "" {
-		title = "ratelash " + r.Tag + " summary"
+		title = "limithit " + r.Tag + " summary"
 	}
 	fmt.Fprintf(&b, "=== %s ===\n", title)
 	fmt.Fprintf(&b, "Sent:         %d\n", r.Sent)

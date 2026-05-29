@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ```bash
 # Build
-go build -o ratelash .
+go build -o limithit .
 cd testserver && go build ./...
 
 # Format (required before commit)
@@ -24,11 +24,11 @@ cd testserver && go run . --rate 5 --burst 5
 cd testserver && go run . --rate 5 --burst 5 --trust-xff-cidr 127.0.0.0/8
 
 # Run attacks
-./ratelash flood http://localhost:8080/api/ping --total 200 --concurrency 20
-./ratelash slowloris http://localhost:8080 --connections 50 --hold 30
-./ratelash spoof http://localhost:8080/api/ping --ip-pool 10.0.0.0/28 --total 200
-./ratelash fuzz http://localhost:8080 --cache-bust --total 200
-./ratelash headerbomb http://localhost:8080/api/echo --header-count 100 --header-size 256
+./limithit flood http://localhost:8080/api/ping --total 200 --concurrency 20
+./limithit slowloris http://localhost:8080 --connections 50 --hold 30
+./limithit spoof http://localhost:8080/api/ping --ip-pool 10.0.0.0/28 --total 200
+./limithit fuzz http://localhost:8080 --cache-bust --total 200
+./limithit headerbomb http://localhost:8080/api/echo --header-count 100 --header-size 256
 ```
 
 Git hooks in `.githooks/` run `gofmt` on commit and `build + vet + gofmt` on push — both root and `testserver/` module.
@@ -37,7 +37,7 @@ Git hooks in `.githooks/` run `gofmt` on commit and `build + vet + gofmt` on pus
 
 Two independent Go modules:
 
-**Root module** (`github.com/conantorreswf/ratelash`) — the CLI attacker:
+**Root module** (`github.com/conantorreswf/limithit`) — the CLI attacker:
 - `main.go` → `internal/cli.Run()` → dispatches subcommands or launches interactive TUI (bubbletea/huh) when called with no args
 - `internal/cli/cli.go` — one `runX()` per attack; URL can be positional or `--url` flag
 - `internal/attacks/<name>/` — each attack is a self-contained package with an `Options` struct and `Run(ctx, opts) → Report`

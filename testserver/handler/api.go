@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/conantorreswf/ratelash/testserver/store"
+	"github.com/conantorreswf/limithit/testserver/store"
 )
 
 type responseRecorder struct {

@@ -10,11 +10,11 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/conantorreswf/ratelash/internal/attacks/flood"
-	"github.com/conantorreswf/ratelash/internal/attacks/fuzz"
-	"github.com/conantorreswf/ratelash/internal/attacks/headerbomb"
-	"github.com/conantorreswf/ratelash/internal/attacks/slowloris"
-	"github.com/conantorreswf/ratelash/internal/attacks/spoof"
+	"github.com/conantorreswf/limithit/internal/attacks/flood"
+	"github.com/conantorreswf/limithit/internal/attacks/fuzz"
+	"github.com/conantorreswf/limithit/internal/attacks/headerbomb"
+	"github.com/conantorreswf/limithit/internal/attacks/slowloris"
+	"github.com/conantorreswf/limithit/internal/attacks/spoof"
 )
 
 func Run(args []string, stdout, stderr io.Writer) int {
@@ -49,10 +49,10 @@ func Run(args []string, stdout, stderr io.Writer) int {
 }
 
 func printRoot(w io.Writer) {
-	fmt.Fprintln(w, `ratelash — HTTP attack-simulation toolkit
+	fmt.Fprintln(w, `limithit — HTTP attack-simulation toolkit
 
 Usage:
-  ratelash <command> [flags] <url>
+  limithit <command> [flags] <url>
 
 Commands:
   flood        High-throughput request flood (basic load/rate-limit probe)
@@ -61,7 +61,7 @@ Commands:
   fuzz         Path enumeration from a wordlist (+ optional cache-bust)
   headerbomb   Oversized headers and progressively growing body
 
-Run "ratelash <command> -h" for command-specific flags.`)
+Run "limithit <command> -h" for command-specific flags.`)
 }
 
 func runFlood(ctx context.Context, args []string, stdout, stderr io.Writer) int {

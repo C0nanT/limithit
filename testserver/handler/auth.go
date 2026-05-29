@@ -8,7 +8,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/conantorreswf/ratelash/testserver/ratelimit"
+	"github.com/conantorreswf/limithit/testserver/ratelimit"
 )
 
 type AuthRequest struct {

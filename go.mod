@@ -1,4 +1,4 @@
-module github.com/conantorreswf/ratelash
+module github.com/conantorreswf/limithit
 
 go 1.23.0
 

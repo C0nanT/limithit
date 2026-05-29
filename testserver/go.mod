@@ -1,3 +1,3 @@
-module github.com/conantorreswf/ratelash/testserver
+module github.com/conantorreswf/limithit/testserver
 
 go 1.22

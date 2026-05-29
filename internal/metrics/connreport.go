@@ -100,7 +100,7 @@ func (c *ConnCollector) Finalize(dur time.Duration) *ConnReport {
 
 func (r *ConnReport) String() string {
 	var b strings.Builder
-	fmt.Fprintln(&b, "=== ratelash slowloris summary ===")
+	fmt.Fprintln(&b, "=== limithit slowloris summary ===")
 	fmt.Fprintf(&b, "Attempted:        %d\n", r.Attempted)
 	fmt.Fprintf(&b, "Established:      %d\n", r.Established)
 	fmt.Fprintf(&b, "DroppedByServer:  %d\n", r.DroppedByServer)

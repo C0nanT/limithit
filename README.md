@@ -1,4 +1,4 @@
-# ratelash
+# limithit
 
 CLI em Go para **simulação de ataques HTTP** e testes de resiliência. Permite reproduzir vetores reais de DDoS, esgotamento de conexão, bypass de rate limit e enumeração de endpoints — tudo contra seu próprio ambiente, antes que um atacante real o faça.
 
@@ -13,9 +13,9 @@ Sem dependências externas — stdlib Go apenas.
 ## Instalação
 
 ```bash
-git clone https://github.com/conantorreswf/ratelash.git
-cd ratelash
-go build -o ratelash .
+git clone https://github.com/conantorreswf/limithit.git
+cd limithit
+go build -o limithit .
 ```
 
 ---
@@ -23,14 +23,14 @@ go build -o ratelash .
 ## Uso geral
 
 ```
-ratelash <comando> [flags] <url>
+limithit <comando> [flags] <url>
 ```
 
 A URL pode vir em qualquer posição — antes ou depois das flags:
 
 ```bash
-./ratelash flood http://localhost:8080/api/ping --total 500
-./ratelash flood --total 500 http://localhost:8080/api/ping  # equivalente
+./limithit flood http://localhost:8080/api/ping --total 500
+./limithit flood --total 500 http://localhost:8080/api/ping  # equivalente
 ```
 
 ---
@@ -47,7 +47,7 @@ Dispara N requisições em paralelo o mais rápido possível. Modo clássico de 
 - Estabilidade do servidor com concorrência alta
 
 ```bash
-./ratelash flood <url> [flags]
+./limithit flood <url> [flags]
 ```
 
 | Flag | Default | Descrição |
@@ -63,10 +63,10 @@ Dispara N requisições em paralelo o mais rápido possível. Modo clássico de 
 
 ```bash
 # Flood GET básico
-./ratelash flood http://localhost:8080/api/ping --total 1000 --concurrency 50
+./limithit flood http://localhost:8080/api/ping --total 1000 --concurrency 50
 
 # Flood POST com JSON
-./ratelash flood http://localhost:8080/api/echo \
+./limithit flood http://localhost:8080/api/echo \
   --method POST \
   --body '{"user":"alice"}' \
   --header 'Content-Type: application/json' \
@@ -75,7 +75,7 @@ Dispara N requisições em paralelo o mais rápido possível. Modo clássico de 
 
 **Saída:**
 ```
-=== ratelash flood summary ===
+=== limithit flood summary ===
 Sent:         1000
 Success(2xx): 50
 Client(4xx):  950   (429: 950, 431: 0, 413: 0)
@@ -104,10 +104,10 @@ Abre muitas conexões TCP simultâneas e **mantém elas abertas indefinidamente*
 Um servidor sem timeout aguarda indefinidamente que o cliente envie o `\r\n\r\n` que finaliza os headers. Com 200+ conexões presas, novos clientes legítimos não conseguem conectar.
 
 **Como a defesa funciona:**
-Com `ReadHeaderTimeout=5s` no testserver, o servidor fecha a conexão após 5s sem headers completos — o ratelash detecta via leitura e reporta `DroppedByServer`.
+Com `ReadHeaderTimeout=5s` no testserver, o servidor fecha a conexão após 5s sem headers completos — o limithit detecta via leitura e reporta `DroppedByServer`.
 
 ```bash
-./ratelash slowloris <url> [flags]
+./limithit slowloris <url> [flags]
 ```
 
 | Flag | Default | Descrição |
@@ -122,13 +122,13 @@ Com `ReadHeaderTimeout=5s` no testserver, o servidor fecha a conexão após 5s s
 
 ```bash
 # 50 conexões por 30s (detecta se servidor fecha antes)
-./ratelash slowloris http://localhost:8080 \
+./limithit slowloris http://localhost:8080 \
   --connections 50 \
   --hold 30 \
   --header-interval 3
 
 # Ataque pesado — 500 conexões por 2 minutos
-./ratelash slowloris http://localhost:8080 \
+./limithit slowloris http://localhost:8080 \
   --connections 500 \
   --hold 120 \
   --header-interval 10
@@ -136,7 +136,7 @@ Com `ReadHeaderTimeout=5s` no testserver, o servidor fecha a conexão após 5s s
 
 **Saída:**
 ```
-=== ratelash slowloris summary ===
+=== limithit slowloris summary ===
 Attempted:        50
 Established:      50
 DroppedByServer:  50        ← servidor fechou ativamente (PROTEGIDO)
@@ -167,7 +167,7 @@ Servidores que aplicam rate limit por IP baseando-se em `X-Forwarded-For` sem va
 O testserver só confia em XFF de IPs na lista `--trust-xff-cidr`. Fora dessa lista, usa `RemoteAddr` real — spoof não funciona.
 
 ```bash
-./ratelash spoof <url> [flags]
+./limithit spoof <url> [flags]
 ```
 
 | Flag | Default | Descrição |
@@ -204,19 +204,19 @@ O testserver só confia em XFF de IPs na lista `--trust-xff-cidr`. Fora dessa li
 
 ```bash
 # Spoof via CIDR, sem delay
-./ratelash spoof http://localhost:8080/api/ping \
+./limithit spoof http://localhost:8080/api/ping \
   --ip-pool 10.0.0.0/28 \
   --total 500
 
 # Simular botnet (pacing zipf + pool grande)
-./ratelash spoof http://localhost:8080/api/ping \
+./limithit spoof http://localhost:8080/api/ping \
   --ip-pool 192.168.0.0/16 \
   --pacing zipf \
   --min-delay-ms 10 --max-delay-ms 500 \
   --total 5000 --concurrency 50
 
 # Tráfego realista distribuído (poisson ~30 req/s)
-./ratelash spoof http://localhost:8080/api/ping \
+./limithit spoof http://localhost:8080/api/ping \
   --ip-pool file:ips.txt \
   --pacing poisson --rps 30 \
   --total 2000 --concurrency 30
@@ -224,7 +224,7 @@ O testserver só confia em XFF de IPs na lista `--trust-xff-cidr`. Fora dessa li
 
 **Saída:**
 ```
-=== ratelash spoof (pool=16 pacing=zipf) summary ===
+=== limithit spoof (pool=16 pacing=zipf) summary ===
 Sent:         500
 Success(2xx): 500         ← 100% passou — por-IP limit bypassado!
 Client(4xx):  0
@@ -247,7 +247,7 @@ Dispara requisições para uma lista de paths comuns (`/admin`, `/.env`, `/api/v
 Cada requisição usa um path da wordlist. Com `--cache-bust`, um query param `?_cb=<hex aleatório>` é anexado, forçando o servidor (e CDNs) a tratar cada request como única — bypassando caches.
 
 ```bash
-./ratelash fuzz <url-base> [flags]
+./limithit fuzz <url-base> [flags]
 ```
 
 | Flag | Default | Descrição |
@@ -273,16 +273,16 @@ Cada requisição usa um path da wordlist. Com `--cache-bust`, um query param `?
 
 ```bash
 # Fuzzing básico com wordlist padrão
-./ratelash fuzz http://localhost:8080 --total 500
+./limithit fuzz http://localhost:8080 --total 500
 
 # Com cache busting + wordlist customizada
-./ratelash fuzz http://localhost:8080 \
+./limithit fuzz http://localhost:8080 \
   --wordlist /caminho/minha-wordlist.txt \
   --cache-bust \
   --total 2000 --concurrency 30
 
 # Detectar endpoints em API externa (com rate)
-./ratelash fuzz https://api.meusite.com \
+./limithit fuzz https://api.meusite.com \
   --cache-bust --total 500 --concurrency 5 --timeout 5
 ```
 
@@ -316,7 +316,7 @@ Cada request injeta N headers `X-Junk-0`, `X-Junk-1`, ..., `X-Junk-N` com valore
 Com `MaxHeaderBytes: 16<<10` (16KB) no testserver, qualquer request com headers maiores recebe `431`. Sem esse config, o servidor processa todos os bytes — potencial OOM.
 
 ```bash
-./ratelash headerbomb <url> [flags]
+./limithit headerbomb <url> [flags]
 ```
 
 | Flag | Default | Descrição |
@@ -335,19 +335,19 @@ Com `MaxHeaderBytes: 16<<10` (16KB) no testserver, qualquer request com headers 
 
 ```bash
 # Testar limite de headers (100 headers × 256B = 25KB)
-./ratelash headerbomb http://localhost:8080/api/echo \
+./limithit headerbomb http://localhost:8080/api/echo \
   --header-count 100 --header-size 256 \
   --body-start 0 --body-max 0 \
   --total 10
 
 # Payload crescente sem headers extras
-./ratelash headerbomb http://localhost:8080/api/echo \
+./limithit headerbomb http://localhost:8080/api/echo \
   --header-count 0 \
   --body-start 1024 --body-max 33554432 \
   --total 20
 
 # Combinado: headers gigantes + body progressivo
-./ratelash headerbomb http://localhost:8080/api/echo \
+./limithit headerbomb http://localhost:8080/api/echo \
   --header-count 500 --header-size 1024 \
   --body-start 1024 --body-max 16777216 \
   --total 30 --concurrency 3
@@ -355,7 +355,7 @@ Com `MaxHeaderBytes: 16<<10` (16KB) no testserver, qualquer request com headers 
 
 **Saída:**
 ```
-=== ratelash headerbomb (hdrs=500x1024B body=1024→16777216B) summary ===
+=== limithit headerbomb (hdrs=500x1024B body=1024→16777216B) summary ===
 Sent:         30
 Success(2xx): 0
 Client(4xx):  30   (429: 0, 431: 30, 413: 0)
@@ -442,7 +442,7 @@ Painéis:
 cd testserver && go run . --rate 5 --burst 5
 
 # Terminal 2: flood que deve ser barrado
-./ratelash flood http://localhost:8080/api/ping --total 200 --concurrency 30
+./limithit flood http://localhost:8080/api/ping --total 200 --concurrency 30
 
 # Esperado: ~5-10 × 200 (429 maioria), dashboard mostra offender 127.0.0.1
 ```
@@ -454,14 +454,14 @@ cd testserver && go run . --rate 5 --burst 5
 cd testserver && go run . --rate 5 --burst 5
 
 # Terminal 2: spoof — todos vão parecer 127.0.0.1, cair no mesmo bucket
-./ratelash spoof http://localhost:8080/api/ping \
+./limithit spoof http://localhost:8080/api/ping \
   --ip-pool 10.0.0.0/24 --total 200
 
 # Esperado: maioria 429 (IPs spoofados ignorados, rate real = 127.0.0.1)
 
 # Agora com trust ativo — spoof FUNCIONA
 cd testserver && go run . --rate 5 --burst 5 --trust-xff-cidr 127.0.0.0/8
-./ratelash spoof http://localhost:8080/api/ping \
+./limithit spoof http://localhost:8080/api/ping \
   --ip-pool 10.0.0.0/24 --total 200
 
 # Esperado: maioria 200 (cada IP tem seu bucket separado — vulnerabilidade!)
@@ -474,7 +474,7 @@ cd testserver && go run . --rate 5 --burst 5 --trust-xff-cidr 127.0.0.0/8
 cd testserver && go run .
 
 # Terminal 2
-./ratelash fuzz http://localhost:8080 --cache-bust --total 200
+./limithit fuzz http://localhost:8080 --cache-bust --total 200
 
 # Verificar na saída quais paths retornam 200 vs 404
 # /api/auth, /api/ping, /api/echo, / devem aparecer como 200/405
@@ -487,7 +487,7 @@ cd testserver && go run .
 cd testserver && go run .
 
 # Terminal 2
-./ratelash slowloris http://localhost:8080 --connections 50 --hold 15 --header-interval 3
+./limithit slowloris http://localhost:8080 --connections 50 --hold 15 --header-interval 3
 
 # Esperado: DroppedByServer=50, AvgHold~5-6s (ReadHeaderTimeout em ação)
 # Se DroppedByServer=0 e AvgHold=15s → servidor vulnerável
@@ -500,7 +500,7 @@ cd testserver && go run .
 cd testserver && go run .
 
 # Terminal 2: headers que ultrapassam MaxHeaderBytes=16KB
-./ratelash headerbomb http://localhost:8080/api/echo \
+./limithit headerbomb http://localhost:8080/api/echo \
   --header-count 100 --header-size 256 --total 5
 
 # Esperado: 431 em todos — MaxHeaderBytes protege
@@ -529,7 +529,7 @@ done
 ## Estrutura do projeto
 
 ```
-ratelash/
+limithit/
 ├── main.go                        # dispatcher de subcomandos
 ├── internal/
 │   ├── cli/

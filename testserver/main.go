@@ -12,9 +12,9 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/conantorreswf/ratelash/testserver/handler"
-	"github.com/conantorreswf/ratelash/testserver/ratelimit"
-	"github.com/conantorreswf/ratelash/testserver/store"
+	"github.com/conantorreswf/limithit/testserver/handler"
+	"github.com/conantorreswf/limithit/testserver/ratelimit"
+	"github.com/conantorreswf/limithit/testserver/store"
 )
 
 func envFloat(key string, fallback float64) float64 {

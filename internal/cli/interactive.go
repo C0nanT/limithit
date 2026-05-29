@@ -16,7 +16,7 @@ func RunInteractive(ctx context.Context, stdout, stderr io.Writer) int {
 	err := huh.NewForm(
 		huh.NewGroup(
 			huh.NewSelect[string]().
-				Title("ratelash — select attack").
+				Title("limithit — select attack").
 				Options(
 					huh.NewOption("flood       high-throughput request flood", "flood"),
 					huh.NewOption("slowloris   hold connections open (slow header drip)", "slowloris"),

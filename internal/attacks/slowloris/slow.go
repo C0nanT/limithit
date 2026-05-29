@@ -11,7 +11,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/conantorreswf/ratelash/internal/metrics"
+	"github.com/conantorreswf/limithit/internal/metrics"
 )
 
 type Options struct {
@@ -105,7 +105,7 @@ func holdOne(ctx context.Context, id int, host, path string, u *url.URL, opts Op
 	cc.Established()
 
 	openedAt := time.Now()
-	initial := fmt.Sprintf("GET %s HTTP/1.1\r\nHost: %s\r\nUser-Agent: ratelash-slowloris\r\nAccept: */*\r\n",
+	initial := fmt.Sprintf("GET %s HTTP/1.1\r\nHost: %s\r\nUser-Agent: limithit-slowloris\r\nAccept: */*\r\n",
 		path, hostname(host))
 	_ = conn.SetWriteDeadline(time.Now().Add(opts.WriteTimeout))
 	n, err := conn.Write([]byte(initial))

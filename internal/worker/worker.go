@@ -9,8 +9,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/conantorreswf/ratelash/internal/client"
-	"github.com/conantorreswf/ratelash/internal/metrics"
+	"github.com/conantorreswf/limithit/internal/client"
+	"github.com/conantorreswf/limithit/internal/metrics"
 )
 
 // RequestBuilder builds the i-th request. Implementations are called from

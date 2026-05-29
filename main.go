@@ -3,7 +3,7 @@ package main
 import (
 	"os"
 
-	"github.com/conantorreswf/ratelash/internal/cli"
+	"github.com/conantorreswf/limithit/internal/cli"
 )
 
 func main() {

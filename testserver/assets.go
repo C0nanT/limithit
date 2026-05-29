@@ -3,7 +3,7 @@ package main
 import (
 	_ "embed"
 
-	"github.com/conantorreswf/ratelash/testserver/handler"
+	"github.com/conantorreswf/limithit/testserver/handler"
 )
 
 //go:embed dashboard/index.html

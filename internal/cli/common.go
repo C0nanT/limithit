@@ -70,7 +70,7 @@ func validateURL(raw string) error {
 }
 
 // firstPositional extracts the URL passed as the first non-flag argument,
-// supporting both "ratelash flood https://x" and "ratelash flood --url https://x".
+// supporting both "limithit flood https://x" and "limithit flood --url https://x".
 func firstPositional(fs *flag.FlagSet) string {
 	if fs.NArg() > 0 {
 		return fs.Arg(0)
@@ -80,7 +80,7 @@ func firstPositional(fs *flag.FlagSet) string {
 
 // extractURLArg scans args for the first http(s) URL token and returns it
 // along with the remaining args (suitable for fs.Parse). This lets users put
-// the URL anywhere: "ratelash flood URL --flag" or "ratelash flood --flag URL".
+// the URL anywhere: "limithit flood URL --flag" or "limithit flood --flag URL".
 func extractURLArg(args []string) (string, []string) {
 	for i, a := range args {
 		if strings.HasPrefix(a, "http://") || strings.HasPrefix(a, "https://") {

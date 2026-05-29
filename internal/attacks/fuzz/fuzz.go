@@ -10,9 +10,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/conantorreswf/ratelash/internal/client"
-	"github.com/conantorreswf/ratelash/internal/metrics"
-	"github.com/conantorreswf/ratelash/internal/worker"
+	"github.com/conantorreswf/limithit/internal/client"
+	"github.com/conantorreswf/limithit/internal/metrics"
+	"github.com/conantorreswf/limithit/internal/worker"
 )
 
 type Options struct {

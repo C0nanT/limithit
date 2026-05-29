@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/conantorreswf/ratelash/testserver/store"
+	"github.com/conantorreswf/limithit/testserver/store"
 )
 
 func SSEHandler(broadcaster *store.SSEBroadcaster) http.HandlerFunc {
