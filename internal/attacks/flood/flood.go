@@ -2,39 +2,55 @@ package flood
 
 import (
 	"context"
+	"flag"
+	"fmt"
 	"io"
 	"net/http"
 	"strings"
-	"time"
 
-	"github.com/conantorreswf/limithit/internal/client"
-	"github.com/conantorreswf/limithit/internal/metrics"
+	"github.com/conantorreswf/limithit/internal/attacks"
 	"github.com/conantorreswf/limithit/internal/worker"
 )
 
-type Options struct {
-	URL         string
-	Method      string
-	Body        string
-	Headers     http.Header
-	Timeout     time.Duration
-	Total       int
-	Concurrency int
+func init() {
+	attacks.Register("flood", func() attacks.Attack { return &Flood{} })
 }
 
-func Run(ctx context.Context, opts Options) *metrics.Report {
-	hc := client.New(client.Config{Timeout: opts.Timeout}, opts.Concurrency)
+type Flood struct {
+	method string
+	body   string
+}
 
+func (f *Flood) Name() string { return "flood" }
+func (f *Flood) Synopsis() string {
+	return "high-throughput request flood (basic load/rate-limit probe)"
+}
+
+func (f *Flood) Flags(fs *flag.FlagSet) {
+	fs.StringVar(&f.method, "method", "GET", "HTTP method")
+	fs.StringVar(&f.body, "body", "", "request body")
+}
+
+func (f *Flood) Validate() error {
+	m, err := validateMethod(f.method)
+	if err != nil {
+		return err
+	}
+	f.method = m
+	return nil
+}
+
+func (f *Flood) Run(ctx context.Context, base attacks.Base) (attacks.Report, error) {
 	build := func(ctx context.Context, _ int) (*http.Request, string, error) {
 		var body io.Reader
-		if opts.Body != "" {
-			body = strings.NewReader(opts.Body)
+		if f.body != "" {
+			body = strings.NewReader(f.body)
 		}
-		req, err := http.NewRequestWithContext(ctx, opts.Method, opts.URL, body)
+		req, err := http.NewRequestWithContext(ctx, f.method, base.URL, body)
 		if err != nil {
 			return nil, "", err
 		}
-		for k, vs := range opts.Headers {
+		for k, vs := range base.Common.Headers {
 			for _, v := range vs {
 				req.Header.Add(k, v)
 			}
@@ -42,9 +58,18 @@ func Run(ctx context.Context, opts Options) *metrics.Report {
 		return req, "", nil
 	}
 
-	return worker.Run(ctx, hc, build, worker.Config{
-		Total:       opts.Total,
-		Concurrency: opts.Concurrency,
+	return worker.Run(ctx, base.Client, build, worker.Config{
+		Total:       base.Common.Total,
+		Concurrency: base.Common.Concurrency,
 		Tag:         "flood",
-	})
+	}), nil
+}
+
+func validateMethod(m string) (string, error) {
+	m = strings.ToUpper(m)
+	switch m {
+	case "GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS":
+		return m, nil
+	}
+	return "", fmt.Errorf("invalid method %q", m)
 }

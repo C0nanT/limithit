@@ -3,44 +3,65 @@ package headerbomb
 import (
 	"bytes"
 	"context"
+	"flag"
 	"fmt"
 	"net/http"
 	"strings"
 	"sync/atomic"
-	"time"
 
-	"github.com/conantorreswf/limithit/internal/client"
-	"github.com/conantorreswf/limithit/internal/metrics"
+	"github.com/conantorreswf/limithit/internal/attacks"
 	"github.com/conantorreswf/limithit/internal/worker"
 )
 
-type Options struct {
-	URL         string
-	Method      string
-	Headers     http.Header
-	Timeout     time.Duration
-	Total       int
-	Concurrency int
-
-	HeaderCount int // how many X-Junk-N headers per request
-	HeaderSize  int // length of each header value
-	BodyStart   int // initial body size in bytes
-	BodyMax     int // max body size (capped)
-	BodyStep    int // bytes to add per step (0 = double each time)
+func init() {
+	attacks.Register("headerbomb", func() attacks.Attack { return &Headerbomb{} })
 }
 
-func Run(ctx context.Context, opts Options) (*metrics.Report, error) {
-	if opts.HeaderCount < 0 || opts.HeaderSize < 0 {
-		return nil, fmt.Errorf("headerbomb: count and size must be >= 0")
+type Headerbomb struct {
+	method      string
+	headerCount int
+	headerSize  int
+	bodyStart   int
+	bodyMax     int
+	bodyStep    int
+}
+
+func (h *Headerbomb) Name() string     { return "headerbomb" }
+func (h *Headerbomb) Synopsis() string { return "oversized headers and progressively growing body" }
+
+func (h *Headerbomb) Flags(fs *flag.FlagSet) {
+	fs.StringVar(&h.method, "method", "", "HTTP method (default POST if body>0 else GET)")
+	fs.IntVar(&h.headerCount, "header-count", 500, "X-Junk headers per request")
+	fs.IntVar(&h.headerSize, "header-size", 1024, "bytes per junk header value")
+	fs.IntVar(&h.bodyStart, "body-start", 1024, "initial body size (bytes)")
+	fs.IntVar(&h.bodyMax, "body-max", 16<<20, "max body size (bytes)")
+	fs.IntVar(&h.bodyStep, "body-step", 0, "body growth step (0 = double each time)")
+}
+
+func (h *Headerbomb) Validate() error {
+	if h.headerCount < 0 || h.headerSize < 0 {
+		return fmt.Errorf("headerbomb: count and size must be >= 0")
 	}
-	if opts.BodyMax < opts.BodyStart {
-		opts.BodyMax = opts.BodyStart
+	if h.method != "" {
+		m, err := validateMethod(h.method)
+		if err != nil {
+			return err
+		}
+		h.method = m
+	}
+	return nil
+}
+
+func (h *Headerbomb) Run(ctx context.Context, base attacks.Base) (attacks.Report, error) {
+	bodyMax := h.bodyMax
+	if bodyMax < h.bodyStart {
+		bodyMax = h.bodyStart
 	}
 
-	junkVal := strings.Repeat("A", opts.HeaderSize)
-	method := opts.Method
+	junkVal := strings.Repeat("A", h.headerSize)
+	method := h.method
 	if method == "" {
-		if opts.BodyMax > 0 {
+		if bodyMax > 0 {
 			method = http.MethodPost
 		} else {
 			method = http.MethodGet
@@ -48,60 +69,64 @@ func Run(ctx context.Context, opts Options) (*metrics.Report, error) {
 	}
 
 	var currentBody atomic.Int64
-	currentBody.Store(int64(opts.BodyStart))
+	currentBody.Store(int64(h.bodyStart))
 
-	hc := client.New(client.Config{Timeout: opts.Timeout}, opts.Concurrency)
+	bodyStep := h.bodyStep
 
-	build := func(ctx context.Context, idx int) (*http.Request, string, error) {
+	build := func(ctx context.Context, _ int) (*http.Request, string, error) {
 		bodySize := int(currentBody.Load())
-		// progressive growth: bump after each Concurrency-sized chunk
-		if bodySize < opts.BodyMax {
-			step := opts.BodyStep
+		if bodySize < bodyMax {
+			step := bodyStep
 			if step <= 0 {
-				step = bodySize // double
+				step = bodySize
 				if step == 0 {
 					step = 1024
 				}
 			}
 			next := bodySize + step
-			if next > opts.BodyMax {
-				next = opts.BodyMax
+			if next > bodyMax {
+				next = bodyMax
 			}
 			currentBody.CompareAndSwap(int64(bodySize), int64(next))
 		}
 
-		var body *bytes.Reader
-		if bodySize > 0 {
-			body = bytes.NewReader(bytes.Repeat([]byte{'A'}, bodySize))
-		}
-
 		var req *http.Request
 		var err error
-		if body != nil {
-			req, err = http.NewRequestWithContext(ctx, method, opts.URL, body)
+		if bodySize > 0 {
+			body := bytes.NewReader(bytes.Repeat([]byte{'A'}, bodySize))
+			req, err = http.NewRequestWithContext(ctx, method, base.URL, body)
 		} else {
-			req, err = http.NewRequestWithContext(ctx, method, opts.URL, nil)
+			req, err = http.NewRequestWithContext(ctx, method, base.URL, nil)
 		}
 		if err != nil {
 			return nil, "", err
 		}
-		for k, vs := range opts.Headers {
+		for k, vs := range base.Common.Headers {
 			for _, v := range vs {
 				req.Header.Add(k, v)
 			}
 		}
-		for i := 0; i < opts.HeaderCount; i++ {
+		for i := 0; i < h.headerCount; i++ {
 			req.Header.Add(fmt.Sprintf("X-Junk-%d", i), junkVal)
 		}
 		return req, "", nil
 	}
 
 	tag := fmt.Sprintf("headerbomb (hdrs=%dx%dB body=%d→%dB)",
-		opts.HeaderCount, opts.HeaderSize, opts.BodyStart, opts.BodyMax)
-	report := worker.Run(ctx, hc, build, worker.Config{
-		Total:       opts.Total,
-		Concurrency: opts.Concurrency,
+		h.headerCount, h.headerSize, h.bodyStart, bodyMax)
+	report := worker.Run(ctx, base.Client, build, worker.Config{
+		Total:       base.Common.Total,
+		Concurrency: base.Common.Concurrency,
 		Tag:         tag,
 	})
 	return report, nil
+}
+
+func validateMethod(m string) (string, error) {
+	m = strings.ToUpper(m)
+	switch m {
+	case "GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS":
+		return m, nil
+	}
+	return "", fmt.Errorf("invalid method %q", m)
 }

@@ -8,22 +8,22 @@ import (
 	"strconv"
 
 	"github.com/charmbracelet/huh"
+	"github.com/conantorreswf/limithit/internal/attacks"
 )
 
 func RunInteractive(ctx context.Context, stdout, stderr io.Writer) int {
-	var attack string
+	all := attacks.All()
+	opts := make([]huh.Option[string], len(all))
+	for i, a := range all {
+		opts[i] = huh.NewOption(fmt.Sprintf("%-12s %s", a.Name(), a.Synopsis()), a.Name())
+	}
 
+	var attack string
 	err := huh.NewForm(
 		huh.NewGroup(
 			huh.NewSelect[string]().
 				Title("limithit — select attack").
-				Options(
-					huh.NewOption("flood       high-throughput request flood", "flood"),
-					huh.NewOption("slowloris   hold connections open (slow header drip)", "slowloris"),
-					huh.NewOption("spoof       X-Forwarded-For IP rotation with pacing", "spoof"),
-					huh.NewOption("fuzz        path enumeration from wordlist", "fuzz"),
-					huh.NewOption("headerbomb  oversized headers + growing body", "headerbomb"),
-				).
+				Options(opts...).
 				Value(&attack),
 		),
 	).Run()
@@ -82,7 +82,7 @@ func interactiveFlood(ctx context.Context, stdout, stderr io.Writer) int {
 	if body != "" {
 		args = append(args, "-body", body)
 	}
-	return runFlood(ctx, args, stdout, stderr)
+	return dispatchInteractive(ctx, "flood", args, stdout, stderr)
 }
 
 func interactiveSlowloris(ctx context.Context, stdout, stderr io.Writer) int {
@@ -122,7 +122,7 @@ func interactiveSlowloris(ctx context.Context, stdout, stderr io.Writer) int {
 	if insecure {
 		args = append(args, "-insecure")
 	}
-	return runSlowloris(ctx, args, stdout, stderr)
+	return dispatchInteractive(ctx, "slowloris", args, stdout, stderr)
 }
 
 func interactiveSpoof(ctx context.Context, stdout, stderr io.Writer) int {
@@ -178,7 +178,7 @@ func interactiveSpoof(ctx context.Context, stdout, stderr io.Writer) int {
 	if ipPool != "" {
 		args = append(args, "-ip-pool", ipPool)
 	}
-	return runSpoof(ctx, args, stdout, stderr)
+	return dispatchInteractive(ctx, "spoof", args, stdout, stderr)
 }
 
 func interactiveFuzz(ctx context.Context, stdout, stderr io.Writer) int {
@@ -215,7 +215,7 @@ func interactiveFuzz(ctx context.Context, stdout, stderr io.Writer) int {
 	if cacheBust {
 		args = append(args, "-cache-bust")
 	}
-	return runFuzz(ctx, args, stdout, stderr)
+	return dispatchInteractive(ctx, "fuzz", args, stdout, stderr)
 }
 
 func interactiveHeaderbomb(ctx context.Context, stdout, stderr io.Writer) int {
@@ -270,7 +270,16 @@ func interactiveHeaderbomb(ctx context.Context, stdout, stderr io.Writer) int {
 	if method != "" {
 		args = append(args, "-method", method)
 	}
-	return runHeaderbomb(ctx, args, stdout, stderr)
+	return dispatchInteractive(ctx, "headerbomb", args, stdout, stderr)
+}
+
+func dispatchInteractive(ctx context.Context, name string, args []string, stdout, stderr io.Writer) int {
+	a, ok := attacks.Lookup(name)
+	if !ok {
+		fmt.Fprintf(stderr, "error: unknown attack %q\n", name)
+		return 2
+	}
+	return runAttack(ctx, a, args, stdout, stderr)
 }
 
 func methodSelect(v *string) *huh.Select[string] {
