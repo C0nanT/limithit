@@ -25,18 +25,59 @@ type Collector struct {
 	statusCounts    map[int]int
 	pathStatus      map[string]map[int]int
 	tag             string
+	attack          string
+	target          string
+
+	latencies []time.Duration
+	startedAt time.Time
+	perSecond map[int]*secBucket
+}
+
+type secBucket struct {
+	sent, ok, rateLimited, errors int64
+}
+
+type LatencyStats struct {
+	P50  time.Duration `json:"p50"`
+	P90  time.Duration `json:"p90"`
+	P95  time.Duration `json:"p95"`
+	P99  time.Duration `json:"p99"`
+	Max  time.Duration `json:"max"`
+	Mean time.Duration `json:"mean"`
+}
+
+type Bucket struct {
+	SecondOffset int   `json:"second_offset"`
+	Sent         int64 `json:"sent"`
+	OK           int64 `json:"ok"`
+	RateLimited  int64 `json:"rate_limited"`
+	Errors       int64 `json:"errors"`
 }
 
 func NewCollector() *Collector {
 	return &Collector{
 		statusCounts: make(map[int]int),
 		pathStatus:   make(map[string]map[int]int),
+		perSecond:    make(map[int]*secBucket),
 	}
 }
 
 func (c *Collector) SetTag(t string) {
 	c.mu.Lock()
 	c.tag = t
+	c.mu.Unlock()
+}
+
+func (c *Collector) SetMeta(attack, target string) {
+	c.mu.Lock()
+	c.attack = attack
+	c.target = target
+	c.mu.Unlock()
+}
+
+func (c *Collector) SetStartedAt(t time.Time) {
+	c.mu.Lock()
+	c.startedAt = t
 	c.mu.Unlock()
 }
 
@@ -56,12 +97,30 @@ func (c *Collector) RecordPath(path string, r client.Result) {
 
 	c.sent++
 
+	var sb *secBucket
+	if !c.startedAt.IsZero() {
+		offset := int(time.Since(c.startedAt).Seconds())
+		sb = c.perSecond[offset]
+		if sb == nil {
+			sb = &secBucket{}
+			c.perSecond[offset] = sb
+		}
+		sb.sent++
+	}
+
 	if r.Err != nil {
 		c.otherErr++
 		if r.Timeout {
 			c.timeouts++
 		}
+		if sb != nil {
+			sb.errors++
+		}
 		return
+	}
+
+	if r.Duration > 0 {
+		c.latencies = append(c.latencies, r.Duration)
 	}
 
 	c.statusCounts[r.Status]++
@@ -77,12 +136,18 @@ func (c *Collector) RecordPath(path string, r client.Result) {
 	switch {
 	case r.Status >= 200 && r.Status < 300:
 		c.success++
+		if sb != nil {
+			sb.ok++
+		}
 	case r.Status == 413:
 		c.payloadTooLarge++
 		c.clientErr++
 	case r.Status == 429:
 		c.tooMany++
 		c.clientErr++
+		if sb != nil {
+			sb.rateLimited++
+		}
 	case r.Status == 431:
 		c.headerTooLarge++
 		c.clientErr++
@@ -94,21 +159,60 @@ func (c *Collector) RecordPath(path string, r client.Result) {
 }
 
 type Report struct {
-	Tag             string
-	Sent            int
-	Success         int
-	ClientErr       int
-	ServerErr       int
-	TooMany         int
-	HeaderTooLarge  int
-	PayloadTooLarge int
-	Timeouts        int
-	OtherErr        int
-	BytesSent       int64
-	StatusCounts    map[int]int
-	PathStatus      map[string]map[int]int
-	Duration        time.Duration
-	RPS             float64
+	Tag             string            `json:"tag,omitempty"`
+	Attack          string            `json:"attack,omitempty"`
+	Target          string            `json:"target,omitempty"`
+	StartedAt       time.Time         `json:"started_at,omitempty"`
+	Sent            int               `json:"sent"`
+	Success         int               `json:"success"`
+	ClientErr       int               `json:"client_err"`
+	ServerErr       int               `json:"server_err"`
+	TooMany         int               `json:"too_many"`
+	HeaderTooLarge  int               `json:"header_too_large"`
+	PayloadTooLarge int               `json:"payload_too_large"`
+	Timeouts        int               `json:"timeouts"`
+	OtherErr        int               `json:"other_err"`
+	BytesSent       int64             `json:"bytes_sent"`
+	StatusCounts    map[int]int       `json:"status_counts"`
+	PathStatus      map[string]map[int]int `json:"path_status,omitempty"`
+	Duration        time.Duration     `json:"duration_ns"`
+	RPS             float64           `json:"rps"`
+	Latency         LatencyStats      `json:"latency"`
+	PerSecond       []Bucket          `json:"per_second,omitempty"`
+}
+
+func computeLatency(latencies []time.Duration) LatencyStats {
+	if len(latencies) == 0 {
+		return LatencyStats{}
+	}
+	sorted := make([]time.Duration, len(latencies))
+	copy(sorted, latencies)
+	sort.Slice(sorted, func(i, j int) bool { return sorted[i] < sorted[j] })
+
+	percentile := func(p float64) time.Duration {
+		if len(sorted) == 1 {
+			return sorted[0]
+		}
+		idx := int(p / 100.0 * float64(len(sorted)-1) + 0.5)
+		if idx >= len(sorted) {
+			idx = len(sorted) - 1
+		}
+		return sorted[idx]
+	}
+
+	var sum time.Duration
+	for _, d := range sorted {
+		sum += d
+	}
+
+	return LatencyStats{
+		P50:  percentile(50),
+		P90:  percentile(90),
+		P95:  percentile(95),
+		P99:  percentile(99),
+		Max:  sorted[len(sorted)-1],
+		Mean: sum / time.Duration(len(sorted)),
+	}
 }
 
 func Finalize(c *Collector, dur time.Duration) *Report {
@@ -134,8 +238,23 @@ func Finalize(c *Collector, dur time.Duration) *Report {
 		pathCounts[p] = nb
 	}
 
+	perSecond := make([]Bucket, 0, len(c.perSecond))
+	for offset, sb := range c.perSecond {
+		perSecond = append(perSecond, Bucket{
+			SecondOffset: offset,
+			Sent:         sb.sent,
+			OK:           sb.ok,
+			RateLimited:  sb.rateLimited,
+			Errors:       sb.errors,
+		})
+	}
+	sort.Slice(perSecond, func(i, j int) bool { return perSecond[i].SecondOffset < perSecond[j].SecondOffset })
+
 	return &Report{
 		Tag:             c.tag,
+		Attack:          c.attack,
+		Target:          c.target,
+		StartedAt:       c.startedAt,
 		Sent:            c.sent,
 		Success:         c.success,
 		ClientErr:       c.clientErr,
@@ -150,6 +269,8 @@ func Finalize(c *Collector, dur time.Duration) *Report {
 		PathStatus:      pathCounts,
 		Duration:        dur,
 		RPS:             rps,
+		Latency:         computeLatency(c.latencies),
+		PerSecond:       perSecond,
 	}
 }
 
@@ -170,6 +291,15 @@ func (r *Report) String() string {
 	fmt.Fprintf(&b, "RPS:          %.2f\n", r.RPS)
 	if r.BytesSent > 0 {
 		fmt.Fprintf(&b, "BytesSent:    %d (%.2f MB)\n", r.BytesSent, float64(r.BytesSent)/(1<<20))
+	}
+	if r.Latency.Max > 0 {
+		fmt.Fprintf(&b, "Latency:      p50=%-9s p90=%-9s p95=%-9s p99=%-9s max=%s\n",
+			r.Latency.P50.Round(time.Millisecond),
+			r.Latency.P90.Round(time.Millisecond),
+			r.Latency.P95.Round(time.Millisecond),
+			r.Latency.P99.Round(time.Millisecond),
+			r.Latency.Max.Round(time.Millisecond),
+		)
 	}
 
 	if len(r.StatusCounts) > 0 {

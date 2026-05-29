@@ -14,6 +14,7 @@ import (
 	_ "github.com/conantorreswf/limithit/internal/attacks/all"
 	"github.com/conantorreswf/limithit/internal/client"
 	"github.com/conantorreswf/limithit/internal/metrics"
+	"github.com/conantorreswf/limithit/internal/report"
 )
 
 func Run(args []string, stdout, stderr io.Writer) int {
@@ -68,6 +69,11 @@ func runAttack(ctx context.Context, a attacks.Attack, args []string, stdout, std
 		expectStatus = fs.Int("expect-status", 0, "assert this HTTP status code appears ≥1 time; exit 1 if not")
 		rampStart    = fs.Float64("ramp-start", 0, "start RPS for linear ramp (0 = disabled)")
 		rampDur      = fs.String("ramp-duration", "30s", "duration to ramp from --ramp-start to full rate")
+		outputFmt    = fs.String("output", "table", "output format: table|json|csv")
+		outputFile   = fs.String("output-file", "", "write output to this file path")
+		compareTo    = fs.String("compare", "", "path to baseline JSON; exits non-zero on regression")
+		cmpP99       = fs.Float64("compare-p99-threshold", 10.0, "p99 latency % increase that flags a regression")
+		cmp429       = fs.Float64("compare-429-threshold", 10.0, "429 ratio % decrease that flags a regression")
 		hdr          HeaderFlag
 	)
 	fs.Var(&hdr, "header", `custom header "Key: Value" (repeatable)`)
@@ -132,9 +138,41 @@ func runAttack(ctx context.Context, a attacks.Attack, args []string, stdout, std
 		fmt.Fprintf(stderr, "error: %s\n", err)
 		return 1
 	}
-	fmt.Fprint(stdout, rep.String())
 	maybeInterrupted(ctx, stderr)
 
+	// resolve output writer
+	outW := stdout
+	if *outputFile != "" {
+		f, ferr := os.Create(*outputFile)
+		if ferr != nil {
+			fmt.Fprintf(stderr, "error: open output file: %s\n", ferr)
+			return 1
+		}
+		defer f.Close()
+		outW = f
+	}
+
+	// render
+	if r, ok := rep.(*metrics.Report); ok {
+		switch *outputFmt {
+		case "json":
+			if err := report.JSON(outW, r); err != nil {
+				fmt.Fprintf(stderr, "error: json: %s\n", err)
+				return 1
+			}
+		case "csv":
+			if err := report.CSV(outW, r); err != nil {
+				fmt.Fprintf(stderr, "error: csv: %s\n", err)
+				return 1
+			}
+		default:
+			report.Table(outW, r)
+		}
+	} else {
+		fmt.Fprint(outW, rep.String())
+	}
+
+	// --expect-status
 	if *expectStatus != 0 {
 		if r, ok := rep.(*metrics.Report); ok {
 			if r.StatusCounts[*expectStatus] == 0 {
@@ -143,6 +181,33 @@ func runAttack(ctx context.Context, a attacks.Attack, args []string, stdout, std
 			}
 		}
 	}
+
+	// --compare
+	if *compareTo != "" {
+		r, ok := rep.(*metrics.Report)
+		if !ok {
+			fmt.Fprintln(stderr, "warning: --compare not supported for this attack type")
+			return 0
+		}
+		baseline, berr := report.LoadBaseline(*compareTo)
+		if berr != nil {
+			fmt.Fprintf(stderr, "error: load baseline: %s\n", berr)
+			return 1
+		}
+		regressions := report.Compare(baseline, r, report.Thresholds{
+			P99PctIncrease:  *cmpP99,
+			R429PctDecrease: *cmp429,
+		})
+		if len(regressions) > 0 {
+			fmt.Fprintln(stderr, "\nregressions detected:")
+			for _, reg := range regressions {
+				fmt.Fprintf(stderr, "  FAIL  %s\n", reg.Message)
+			}
+			return 1
+		}
+		fmt.Fprintln(outW, "compare: no regressions detected")
+	}
+
 	return 0
 }
 

@@ -72,6 +72,8 @@ func (g *GzipBomb) Run(ctx context.Context, base attacks.Base) (attacks.Report, 
 		Concurrency: base.Common.Concurrency,
 		Pacer:       base.Common.Pacer,
 		Tag:         "gzipbomb",
+		Attack:      "gzipbomb",
+		Target:      base.URL,
 	}), nil
 }
 

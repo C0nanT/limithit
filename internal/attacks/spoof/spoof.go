@@ -100,6 +100,8 @@ func (s *Spoof) Run(ctx context.Context, base attacks.Base) (attacks.Report, err
 		Concurrency: base.Common.Concurrency,
 		Pacer:       pacer,
 		Tag:         fmt.Sprintf("spoof (pool=%d pacing=%s)", pool.Size(), s.pacing),
+		Attack:      "spoof",
+		Target:      base.URL,
 	})
 	return report, nil
 }

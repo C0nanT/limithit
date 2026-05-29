@@ -63,6 +63,8 @@ func (f *Flood) Run(ctx context.Context, base attacks.Base) (attacks.Report, err
 		Concurrency: base.Common.Concurrency,
 		Pacer:       base.Common.Pacer,
 		Tag:         "flood",
+		Attack:      "flood",
+		Target:      base.URL,
 	}), nil
 }
 

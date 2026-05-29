@@ -89,6 +89,8 @@ func (r *Replay) Run(ctx context.Context, base attacks.Base) (attacks.Report, er
 		Concurrency: base.Common.Concurrency,
 		Pacer:       base.Common.Pacer,
 		Tag:         "replay",
+		Attack:      "replay",
+		Target:      base.URL,
 	}), nil
 }
 

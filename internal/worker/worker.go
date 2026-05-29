@@ -25,6 +25,8 @@ type Config struct {
 	Concurrency int
 	Pacer       metrics.Pacer
 	Tag         string
+	Attack      string
+	Target      string
 }
 
 func Run(ctx context.Context, hc *http.Client, build RequestBuilder, cfg Config) *metrics.Report {
@@ -37,6 +39,7 @@ func Run(ctx context.Context, hc *http.Client, build RequestBuilder, cfg Config)
 
 	collector := metrics.NewCollector()
 	collector.SetTag(cfg.Tag)
+	collector.SetMeta(cfg.Attack, cfg.Target)
 	pacer := cfg.Pacer
 	if pacer == nil {
 		pacer = metrics.NoopPacer()
@@ -47,6 +50,7 @@ func Run(ctx context.Context, hc *http.Client, build RequestBuilder, cfg Config)
 	var wg sync.WaitGroup
 
 	start := time.Now()
+	collector.SetStartedAt(start)
 
 	for i := 0; i < cfg.Concurrency; i++ {
 		wg.Add(1)

@@ -118,6 +118,8 @@ func (h *Headerbomb) Run(ctx context.Context, base attacks.Base) (attacks.Report
 		Total:       base.Common.Total,
 		Concurrency: base.Common.Concurrency,
 		Tag:         tag,
+		Attack:      "headerbomb",
+		Target:      base.URL,
 	})
 	return report, nil
 }

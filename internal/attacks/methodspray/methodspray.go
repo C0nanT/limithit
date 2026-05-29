@@ -109,5 +109,7 @@ func (m *MethodSpray) Run(ctx context.Context, base attacks.Base) (attacks.Repor
 		Concurrency: base.Common.Concurrency,
 		Pacer:       base.Common.Pacer,
 		Tag:         tag,
+		Attack:      "methodspray",
+		Target:      base.URL,
 	}), nil
 }

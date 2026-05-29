@@ -99,6 +99,8 @@ func (h *H2Flood) Run(ctx context.Context, base attacks.Base) (attacks.Report, e
 		Concurrency: concurrency,
 		Pacer:       base.Common.Pacer,
 		Tag:         "h2flood",
+		Attack:      "h2flood",
+		Target:      base.URL,
 	}), nil
 }
 
