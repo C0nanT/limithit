@@ -1,6 +1,5 @@
 # 002 — Attack engine & new attacks
 
-**Status:** proposed
 **Theme:** Features
 **Depends on:** 001 (attack registry + shared harness)
 

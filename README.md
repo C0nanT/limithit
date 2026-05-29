@@ -35,6 +35,47 @@ A URL pode vir em qualquer posição — antes ou depois das flags:
 
 ---
 
+## Arquitetura de execução
+
+Todo subcomando passa pelo mesmo ponto de entrada (`internal/cli/cli.go` → `runAttack`). Antes de chamar o ataque, o CLI monta um `attacks.Base` com dependências compartilhadas: URL, `http.Client` (quando aplicável), total/concorrência/timeout e, opcionalmente, um `Pacer` para modelar a taxa de envio.
+
+```mermaid
+flowchart TB
+  CLI["runAttack — flags globais"]
+  CLI --> H2[h2flood]
+  CLI --> WS[wsflood]
+  CLI --> GZ[gzipbomb]
+  CLI --> RP[replay]
+  CLI --> MS[methodspray]
+  CLI --> OLD["flood, fuzz, spoof, headerbomb, …"]
+  H2 --> W[worker.Run]
+  GZ --> W
+  RP --> W
+  MS --> W
+  OLD --> W
+  WS --> RAW["TCP/TLS + handshake WebSocket"]
+```
+
+### Flags globais (valem para qualquer comando)
+
+| Flag | Efeito |
+|------|--------|
+| `--ramp-start` + `--ramp-duration` | Aumenta a taxa linearmente até o ritmo “cheio” (via `metrics.Pacer`) |
+| `--keepalive=false` | Força handshake TCP/TLS novo a cada requisição HTTP |
+| `--expect-status` | Exit code 1 se o status esperado (ex.: 429) não aparecer no relatório |
+
+### Dois caminhos de execução
+
+**Pool HTTP (`worker.Run`)** — A maioria dos ataques monta requisições e delega ao worker pool genérico (`internal/worker/worker.go`). Workers consomem jobs de um canal, respeitam o `Pacer` entre envios e agregam resultados em `metrics.Report` (contagens por status, RPS, latência, etc.).
+
+Ataques neste caminho: `flood`, `fuzz`, `spoof`, `headerbomb`, `h2flood`, `gzipbomb`, `replay`, `methodspray`.
+
+**Socket cru** — `slowloris` e `wsflood` abrem conexões TCP/TLS diretamente, sem `http.Client`. Mantêm conexões abertas (HTTP incompleto ou WebSocket) e reportam via `metrics.ConnReport` (`Established`, `Rejected`, `AvgHold`, …).
+
+Cada pacote em `internal/attacks/<nome>/` implementa a interface `Attack` (registrada em `init()`), com flags próprias além das globais acima.
+
+---
+
 ## Comandos
 
 ### `flood` — Flood de requisições
@@ -533,20 +574,28 @@ limithit/
 ├── main.go                        # dispatcher de subcomandos
 ├── internal/
 │   ├── cli/
-│   │   ├── cli.go                 # lógica de cada subcomando
-│   │   └── common.go              # flags compartilhadas, helpers
+│   │   ├── cli.go                 # runAttack + flags globais
+│   │   └── common.go              # extractURLArg, helpers
 │   ├── attacks/
-│   │   ├── flood/flood.go         # flood de requests
-│   │   ├── slowloris/slow.go      # esgotamento de conexões
-│   │   ├── spoof/spoof.go         # rotação de IP + pacing
-│   │   ├── fuzz/fuzz.go           # enumeração de paths
-│   │   └── headerbomb/bomb.go     # headers/body abusivos
+│   │   ├── attack.go              # interface Attack + Base
+│   │   ├── registry.go            # Register / Lookup
+│   │   ├── all/all.go             # blank imports → init() de cada ataque
+│   │   ├── flood/                 # flood de requests
+│   │   ├── slowloris/             # esgotamento HTTP/1 (socket cru)
+│   │   ├── spoof/                 # rotação de IP + pacing
+│   │   ├── fuzz/                  # enumeração de paths
+│   │   ├── headerbomb/            # headers/body abusivos
+│   │   ├── h2flood/               # flood HTTP/2 multiplexado
+│   │   ├── wsflood/               # exaustão WebSocket (socket cru)
+│   │   ├── gzipbomb/              # amplificação gzip
+│   │   ├── replay/                # replay HAR / arquivo de reqs
+│   │   └── methodspray/           # matriz método × path
 │   ├── client/client.go           # http.Client com transport tuning
 │   ├── worker/worker.go           # worker pool genérico
 │   └── metrics/
-│       ├── metrics.go             # collector thread-safe + relatório
-│       ├── connreport.go          # métricas de conexão (slowloris)
-│       ├── pacer.go               # uniform / poisson / zipf
+│       ├── metrics.go             # collector thread-safe + relatório HTTP
+│       ├── connreport.go          # métricas de conexão (slowloris, wsflood)
+│       ├── pacer.go               # uniform / poisson / zipf / ramp
 │       ├── ippool.go              # CIDR expansion + rotação
 │       ├── wordlist.go            # wordlist embutida + arquivo externo
 │       └── paths.txt              # 100 paths padrão para fuzz

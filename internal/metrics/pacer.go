@@ -61,6 +61,45 @@ func (z *zipfPacer) Next() time.Duration {
 	return z.min + time.Duration(delta)
 }
 
+type rampPacer struct {
+	startRate float64
+	endRate   float64
+	rampDur   time.Duration
+	startedAt time.Time
+}
+
+func (r *rampPacer) Next() time.Duration {
+	elapsed := time.Since(r.startedAt)
+	var rate float64
+	if r.rampDur <= 0 || elapsed >= r.rampDur {
+		rate = r.endRate
+	} else {
+		frac := float64(elapsed) / float64(r.rampDur)
+		rate = r.startRate + (r.endRate-r.startRate)*frac
+	}
+	if rate <= 0 {
+		return 0
+	}
+	return time.Duration(float64(time.Second) / rate)
+}
+
+// NewRampPacer returns a Pacer that linearly increases from startRPS to endRPS over rampDuration.
+// After rampDuration elapses, rate is fixed at endRPS.
+func NewRampPacer(startRPS, endRPS float64, rampDuration time.Duration) (Pacer, error) {
+	if endRPS <= 0 {
+		return nil, errors.New("ramp pacer: endRPS must be > 0")
+	}
+	if startRPS < 0 {
+		return nil, errors.New("ramp pacer: startRPS must be >= 0")
+	}
+	return &rampPacer{
+		startRate: startRPS,
+		endRate:   endRPS,
+		rampDur:   rampDuration,
+		startedAt: time.Now(),
+	}, nil
+}
+
 func NewPacer(kind string, minDelay, maxDelay time.Duration, rps float64) (Pacer, error) {
 	rng := rand.New(rand.NewPCG(rand.Uint64(), rand.Uint64()))
 	switch strings.ToLower(kind) {

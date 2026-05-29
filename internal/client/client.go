@@ -9,11 +9,12 @@ import (
 )
 
 type Config struct {
-	URL     string
-	Method  string
-	Body    string
-	Headers http.Header
-	Timeout time.Duration
+	URL               string
+	Method            string
+	Body              string
+	Headers           http.Header
+	Timeout           time.Duration
+	DisableKeepAlives bool
 }
 
 type Result struct {
@@ -39,7 +40,7 @@ func New(cfg Config, concurrency int) *http.Client {
 	tr.MaxIdleConns = concurrency * 2
 	tr.MaxIdleConnsPerHost = concurrency * 2
 	tr.MaxConnsPerHost = concurrency * 2
-	tr.DisableKeepAlives = false
+	tr.DisableKeepAlives = cfg.DisableKeepAlives
 
 	return &http.Client{
 		Timeout:   cfg.Timeout,

@@ -5,6 +5,8 @@ import (
 	"flag"
 	"net/http"
 	"time"
+
+	"github.com/conantorreswf/limithit/internal/metrics"
 )
 
 // Report is the printable result of an attack run.
@@ -19,6 +21,7 @@ type CommonOpts struct {
 	Concurrency int
 	Timeout     time.Duration
 	Headers     http.Header
+	Pacer       metrics.Pacer // nil → noop (max rate)
 }
 
 // Base carries shared, pre-built dependencies injected into Attack.Run.

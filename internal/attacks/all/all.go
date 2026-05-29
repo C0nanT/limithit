@@ -4,7 +4,12 @@ package all
 import (
 	_ "github.com/conantorreswf/limithit/internal/attacks/flood"
 	_ "github.com/conantorreswf/limithit/internal/attacks/fuzz"
+	_ "github.com/conantorreswf/limithit/internal/attacks/gzipbomb"
+	_ "github.com/conantorreswf/limithit/internal/attacks/h2flood"
 	_ "github.com/conantorreswf/limithit/internal/attacks/headerbomb"
+	_ "github.com/conantorreswf/limithit/internal/attacks/methodspray"
+	_ "github.com/conantorreswf/limithit/internal/attacks/replay"
 	_ "github.com/conantorreswf/limithit/internal/attacks/slowloris"
 	_ "github.com/conantorreswf/limithit/internal/attacks/spoof"
+	_ "github.com/conantorreswf/limithit/internal/attacks/wsflood"
 )

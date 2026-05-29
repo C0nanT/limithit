@@ -13,6 +13,7 @@ import (
 	"github.com/conantorreswf/limithit/internal/attacks"
 	_ "github.com/conantorreswf/limithit/internal/attacks/all"
 	"github.com/conantorreswf/limithit/internal/client"
+	"github.com/conantorreswf/limithit/internal/metrics"
 )
 
 func Run(args []string, stdout, stderr io.Writer) int {
@@ -59,11 +60,15 @@ func runAttack(ctx context.Context, a attacks.Attack, args []string, stdout, std
 	fs.SetOutput(stderr)
 
 	var (
-		urlFlag     = fs.String("url", "", "target URL (or positional)")
-		total       = fs.Int("total", 100, "total requests")
-		concurrency = fs.Int("concurrency", 10, "worker count")
-		timeoutSec  = fs.Int("timeout", 10, "per-request timeout seconds")
-		hdr         HeaderFlag
+		urlFlag      = fs.String("url", "", "target URL (or positional)")
+		total        = fs.Int("total", 100, "total requests")
+		concurrency  = fs.Int("concurrency", 10, "worker count")
+		timeoutSec   = fs.Int("timeout", 10, "per-request timeout seconds")
+		keepalive    = fs.Bool("keepalive", true, "enable HTTP keep-alive (false = new TCP/TLS per request)")
+		expectStatus = fs.Int("expect-status", 0, "assert this HTTP status code appears ≥1 time; exit 1 if not")
+		rampStart    = fs.Float64("ramp-start", 0, "start RPS for linear ramp (0 = disabled)")
+		rampDur      = fs.String("ramp-duration", "30s", "duration to ramp from --ramp-start to full rate")
+		hdr          HeaderFlag
 	)
 	fs.Var(&hdr, "header", `custom header "Key: Value" (repeatable)`)
 
@@ -91,14 +96,34 @@ func runAttack(ctx context.Context, a attacks.Attack, args []string, stdout, std
 	}
 
 	timeout := time.Duration(*timeoutSec) * time.Second
+
+	var pacer metrics.Pacer
+	if *rampStart > 0 {
+		rd, err := time.ParseDuration(*rampDur)
+		if err != nil {
+			fmt.Fprintf(stderr, "error: invalid --ramp-duration: %s\n", err)
+			return 2
+		}
+		p, err := metrics.NewRampPacer(*rampStart, float64(*concurrency), rd)
+		if err != nil {
+			fmt.Fprintf(stderr, "error: %s\n", err)
+			return 2
+		}
+		pacer = p
+	}
+
 	base := attacks.Base{
-		URL:    *urlFlag,
-		Client: client.New(client.Config{Timeout: timeout}, *concurrency),
+		URL: *urlFlag,
+		Client: client.New(client.Config{
+			Timeout:           timeout,
+			DisableKeepAlives: !*keepalive,
+		}, *concurrency),
 		Common: attacks.CommonOpts{
 			Total:       *total,
 			Concurrency: *concurrency,
 			Timeout:     timeout,
 			Headers:     hdr.Headers,
+			Pacer:       pacer,
 		},
 	}
 
@@ -109,6 +134,15 @@ func runAttack(ctx context.Context, a attacks.Attack, args []string, stdout, std
 	}
 	fmt.Fprint(stdout, rep.String())
 	maybeInterrupted(ctx, stderr)
+
+	if *expectStatus != 0 {
+		if r, ok := rep.(*metrics.Report); ok {
+			if r.StatusCounts[*expectStatus] == 0 {
+				fmt.Fprintf(stderr, "assertion failed: expected HTTP %d but it was not observed\n", *expectStatus)
+				return 1
+			}
+		}
+	}
 	return 0
 }
 
