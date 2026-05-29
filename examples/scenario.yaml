@@ -1,0 +1,29 @@
+# Example limithit scenario
+# Run with: limithit run examples/scenario.yaml
+#
+# Set TARGET_URL before running:
+#   export TARGET_URL=http://localhost:8080
+#   cd testserver && go run . --rate 5 --burst 5 --trust-xff-cidr 127.0.0.0/8
+
+target: ${TARGET_URL}
+
+defaults:
+  concurrency: 20
+  output: table
+
+scenario:
+  # 1. Flood — expect the server to rate-limit (429) at least once
+  - attack: flood
+    total: 2000
+    expect-status: 429
+
+  # 2. Slowloris — hold 100 connections open for 30 seconds
+  - attack: slowloris
+    connections: 100
+    hold: 30
+
+  # 3. Spoof — cycle through an IP pool (requires --trust-xff-cidr on testserver)
+  - attack: spoof
+    ip-pool: 10.0.0.0/24
+    total: 500
+    expect-status: 429

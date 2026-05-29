@@ -13,8 +13,10 @@ import (
 	"github.com/conantorreswf/limithit/internal/attacks"
 	_ "github.com/conantorreswf/limithit/internal/attacks/all"
 	"github.com/conantorreswf/limithit/internal/client"
+	"github.com/conantorreswf/limithit/internal/config"
 	"github.com/conantorreswf/limithit/internal/metrics"
 	"github.com/conantorreswf/limithit/internal/report"
+	"github.com/conantorreswf/limithit/internal/scenario"
 )
 
 func Run(args []string, stdout, stderr io.Writer) int {
@@ -31,6 +33,10 @@ func Run(args []string, stdout, stderr io.Writer) int {
 	case "-h", "--help", "help":
 		printRoot(stdout)
 		return 0
+	case "init":
+		return runInit(rest, stdout, stderr)
+	case "run":
+		return runScenario(ctx, rest, stdout, stderr)
 	default:
 		a, ok := attacks.Lookup(cmd)
 		if !ok {
@@ -46,14 +52,67 @@ func printRoot(w io.Writer) {
 	fmt.Fprintln(w, `limithit — HTTP attack-simulation toolkit
 
 Usage:
-  limithit <command> [flags] <url>`)
+  limithit <command> [flags] <url>
+  limithit run <scenario.yaml> [--continue-on-fail]
+  limithit init [config.yaml]`)
 	fmt.Fprintln(w)
-	fmt.Fprintln(w, "Commands:")
+	fmt.Fprintln(w, "Attack commands:")
 	for _, a := range attacks.All() {
 		fmt.Fprintf(w, "  %-12s %s\n", a.Name(), a.Synopsis())
 	}
 	fmt.Fprintln(w)
+	fmt.Fprintln(w, "Scenario commands:")
+	fmt.Fprintln(w, "  init          scaffold a starter limithit.yaml")
+	fmt.Fprintln(w, "  run           execute a scenario file and print combined report")
+	fmt.Fprintln(w)
 	fmt.Fprintln(w, `Run "limithit <command> -h" for command-specific flags.`)
+}
+
+func runInit(args []string, stdout, stderr io.Writer) int {
+	path := "limithit.yaml"
+	for _, a := range args {
+		if a != "" && a[0] != '-' {
+			path = a
+			break
+		}
+	}
+	if _, err := os.Stat(path); err == nil {
+		fmt.Fprintf(stderr, "error: %s already exists\n", path)
+		return 2
+	}
+	if err := os.WriteFile(path, []byte(config.Scaffold()), 0644); err != nil {
+		fmt.Fprintf(stderr, "error: write %s: %s\n", path, err)
+		return 1
+	}
+	fmt.Fprintf(stdout, "created %s\n", path)
+	return 0
+}
+
+func runScenario(ctx context.Context, args []string, stdout, stderr io.Writer) int {
+	fs := flag.NewFlagSet("run", flag.ContinueOnError)
+	fs.SetOutput(stderr)
+	continueOnFail := fs.Bool("continue-on-fail", false, "continue to next step on assertion failure")
+
+	if err := fs.Parse(args); err != nil {
+		return 2
+	}
+	if fs.NArg() == 0 {
+		fmt.Fprintln(stderr, "usage: limithit run <scenario.yaml> [--continue-on-fail]")
+		return 2
+	}
+
+	cfg, err := config.Load(fs.Arg(0))
+	if err != nil {
+		fmt.Fprintf(stderr, "error: %s\n", err)
+		return 2
+	}
+
+	if err := scenario.Validate(cfg); err != nil {
+		fmt.Fprintf(stderr, "error: %s\n", err)
+		return 2
+	}
+
+	return scenario.Run(ctx, cfg, stdout, stderr, *continueOnFail)
 }
 
 func runAttack(ctx context.Context, a attacks.Attack, args []string, stdout, stderr io.Writer) int {

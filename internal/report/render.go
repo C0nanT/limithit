@@ -106,6 +106,13 @@ func Compare(baseline, current *metrics.Report, t Thresholds) []Regression {
 	return out
 }
 
+// JSONAny writes indented JSON for any value to w.
+func JSONAny(w io.Writer, v interface{}) error {
+	enc := json.NewEncoder(w)
+	enc.SetIndent("", "  ")
+	return enc.Encode(v)
+}
+
 // LoadBaseline reads a JSON-encoded *metrics.Report from path.
 func LoadBaseline(path string) (*metrics.Report, error) {
 	f, err := os.Open(path)
