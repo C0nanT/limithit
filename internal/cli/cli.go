@@ -18,15 +18,14 @@ import (
 )
 
 func Run(args []string, stdout, stderr io.Writer) int {
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
+
 	if len(args) < 1 {
-		printRoot(stderr)
-		return 2
+		return RunInteractive(ctx, stdout, stderr)
 	}
 	cmd := args[0]
 	rest := args[1:]
-
-	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
-	defer stop()
 
 	switch cmd {
 	case "flood":
