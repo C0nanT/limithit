@@ -5,17 +5,23 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Commands
 
 ```bash
-# Build
+# Build (or: make build / make all)
 go build -o limithit .
 cd testserver && go build ./...
 
-# Format (required before commit)
+# Format — required before commit (or: make fmt)
 gofmt -w .
 gofmt -w testserver/
 
-# Vet
+# Vet (or: make vet)
 go vet ./...
 cd testserver && go vet ./...
+
+# Test — root module
+go test ./internal/...
+
+# Test — testserver module
+cd testserver && go test ./...
 
 # Run testserver (local target)
 cd testserver && go run . --rate 5 --burst 5
@@ -37,7 +43,7 @@ Git hooks in `.githooks/` run `gofmt` on commit and `build + vet + gofmt` on pus
 
 Two independent Go modules:
 
-**Root module** (`github.com/conantorreswf/limithit`) — the CLI attacker:
+**Root module** (`github.com/conantorreswf/limithit`) — the CLI attacker (has TUI deps: bubbletea, huh, charmbracelet):
 - `main.go` → `internal/cli.Run()` → dispatches subcommands or launches interactive TUI (bubbletea/huh) when called with no args
 - `internal/cli/cli.go` — one `runX()` per attack; URL can be positional or `--url` flag
 - `internal/attacks/<name>/` — each attack is a self-contained package with an `Options` struct and `Run(ctx, opts) → Report`
@@ -57,4 +63,4 @@ Two independent Go modules:
 - **URL position-agnostic**: `extractURLArg` in `cli/common.go` strips the URL from args before `flag.Parse`, so `--flag value <url>` and `<url> --flag value` both work.
 - **Spoof bypass condition**: spoof only bypasses per-IP rate limit when `--trust-xff-cidr` includes the attacker's real IP. Without it, all traffic shares one bucket (real `RemoteAddr`).
 - **Slowloris detection**: `DroppedByServer > 0` means the server actively closed the connection (protected). `DroppedByServer = 0` with `AvgHold ≈ --hold` means the server is vulnerable.
-- **No test files exist yet** — `future.md` lists planned attacks (HTTP/2 flood, WebSocket exhaustion, gzip bomb, etc.).
+- **Tests exist** in `internal/metrics/` (ippool, pacer, wordlist) and `testserver/` (ratelimit, auth). `future.md` lists planned attacks (HTTP/2 flood, WebSocket exhaustion, gzip bomb, etc.).
