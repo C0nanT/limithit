@@ -59,6 +59,10 @@ cd testserver && go run . --rate 5 --burst 5 --algo slidingwindow
 
 Git hooks in `.githooks/` run `gofmt` on commit and `build + vet + gofmt` on push — both root and `testserver/` module.
 
+## Docs
+
+`docs/` — one Markdown file per attack explaining what it does, what it tests, all flags, usage examples, and how to interpret results. `docs/README.md` is the index. Running `./limithit` with no args opens the interactive TUI instead of requiring inline flags.
+
 ## Architecture
 
 Two independent Go modules:
