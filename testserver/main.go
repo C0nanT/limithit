@@ -149,7 +149,7 @@ func main() {
 	mux := http.NewServeMux()
 
 	// dashboard + SSE (no rate limiting, no recording)
-	mux.HandleFunc("/", handler.DashboardHandler)
+	mux.HandleFunc("/{$}", handler.DashboardHandler)
 	mux.Handle("/metrics", handler.SSEHandler(broadcaster))
 
 	limited := func(h http.Handler) http.Handler {
@@ -160,6 +160,9 @@ func main() {
 	mux.Handle("/api/auth", limited(authHandler))
 	mux.Handle("/api/gzip", limited(handler.NewGzipHandler(decomposeCap)))
 	mux.Handle("/ws/echo", handler.NewWsEchoHandler(*maxConns))
+
+	// catch-all: fuzz-discovered paths return JSON instead of dashboard HTML
+	mux.Handle("/", limited(http.HandlerFunc(handler.FuzzTargetHandler)))
 
 	// background broadcaster tick
 	go func() {

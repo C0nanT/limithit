@@ -28,6 +28,20 @@ func RecordingMiddleware(s *store.MetricsStore, next http.Handler) http.Handler 
 	})
 }
 
+// FuzzTargetHandler responds to any unregistered path with JSON, making
+// fuzz-discovered routes visibly reachable instead of silently serving HTML.
+func FuzzTargetHandler(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	resp, _ := json.Marshal(map[string]any{
+		"path":      r.URL.Path,
+		"method":    r.Method,
+		"reachable": true,
+		"protected": false,
+		"note":      "no rate-limit on this path — fuzz target",
+	})
+	_, _ = w.Write(resp)
+}
+
 func PingHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		http.Error(w, `{"error":"method not allowed"}`, http.StatusMethodNotAllowed)
