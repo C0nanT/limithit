@@ -36,14 +36,12 @@ func (f *Fuzz) Validate() error { return nil }
 
 func (f *Fuzz) FormFields() []attacks.FormField {
 	url := ""
-	total := "1000"
 	concurrency := "20"
 	timeout := "10"
 	wordlist := ""
 	cacheBust := "false"
 	return []attacks.FormField{
 		{Flag: "url", Label: "Base URL", Help: "Scheme + host; paths come from the wordlist", Kind: attacks.FieldURL, Default: "", Value: &url},
-		{Flag: "total", Label: "Total requests", Kind: attacks.FieldInt, Default: "1000", Validate: attacks.ValidatePosInt, Value: &total},
 		{Flag: "concurrency", Label: "Concurrency (workers)", Kind: attacks.FieldInt, Default: "20", Validate: attacks.ValidatePosInt, Value: &concurrency},
 		{Flag: "timeout", Label: "Timeout (s)", Kind: attacks.FieldInt, Default: "10", Validate: attacks.ValidatePosInt, Value: &timeout},
 		{Flag: "wordlist", Label: "Wordlist path (empty = built-in)", Kind: attacks.FieldString, Default: "", Value: &wordlist},
@@ -73,6 +71,8 @@ func (f *Fuzz) Run(ctx context.Context, base attacks.Base) (attacks.Report, erro
 	if wl.Size() == 0 {
 		return nil, fmt.Errorf("fuzz: wordlist is empty")
 	}
+
+	base.Common.Total = wl.Size()
 
 	cacheBust := f.cacheBust
 	build := func(ctx context.Context, _ int) (*http.Request, string, error) {
