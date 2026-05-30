@@ -6,6 +6,7 @@ import (
 	"io"
 	"net"
 	"net/http"
+	"strings"
 	"sync"
 	"time"
 
@@ -141,6 +142,13 @@ func doRequest(hc *http.Client, req *http.Request) client.Result {
 			Timeout:  isTimeout(err),
 			Duration: time.Since(start),
 		}
+	}
+	// Streaming responses (SSE, chunked with no Content-Length) would block
+	// io.Copy until the per-request timeout fires. Close immediately so workers
+	// don't hang after the wordlist is exhausted.
+	if strings.Contains(resp.Header.Get("Content-Type"), "text/event-stream") {
+		_ = resp.Body.Close()
+		return client.Result{Status: resp.StatusCode, Duration: time.Since(start)}
 	}
 	defer resp.Body.Close()
 	_, _ = io.Copy(io.Discard, resp.Body)
