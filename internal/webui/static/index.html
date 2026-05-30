@@ -293,6 +293,21 @@
   .status-5xx { background: rgba(248,81,73,.12); color: var(--red); }
   .status-other { background: rgba(110,119,129,.12); color: var(--text-muted); }
 
+  .route-table { width: 100%; border-collapse: collapse; font-size: 11px; }
+  .route-table th { text-align: left; font-size: 9px; font-weight: 600; letter-spacing: .5px; text-transform: uppercase; color: var(--text-muted); padding: 0 8px 6px; border-bottom: 1px solid var(--border); }
+  .route-table td { padding: 5px 8px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+  .route-table tr:last-child td { border-bottom: none; }
+  .route-table tr:hover td { background: var(--bg-hover); }
+  .route-link { color: var(--accent); text-decoration: none; font-family: var(--font-mono); word-break: break-all; }
+  .route-link:hover { text-decoration: underline; }
+  .route-status-chips { display: flex; gap: 4px; flex-wrap: wrap; }
+  .route-count { color: var(--text-muted); text-align: right; min-width: 40px; }
+  .route-badge-2xx { background: rgba(63,185,80,.15); color: var(--green); font-size: 10px; padding: 2px 7px; border-radius: 10px; font-weight: 600; }
+  .route-badge-3xx { background: rgba(88,166,255,.12); color: var(--accent); font-size: 10px; padding: 2px 7px; border-radius: 10px; font-weight: 600; }
+  .route-badge-4xx { background: rgba(227,179,65,.12); color: var(--yellow); font-size: 10px; padding: 2px 7px; border-radius: 10px; font-weight: 600; }
+  .route-badge-5xx { background: rgba(248,81,73,.12); color: var(--red); font-size: 10px; padding: 2px 7px; border-radius: 10px; font-weight: 600; }
+  .route-found-badge { font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 10px; background: rgba(63,185,80,.15); color: var(--green); }
+
   .conn-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; }
 
   .error-box {
@@ -449,6 +464,23 @@
           <div class="conn-grid" id="result-conn-grid"></div>
         </div>
 
+        <div class="result-section hidden" id="result-fuzz-routes">
+          <div class="result-header">
+            <div class="section-title" data-i18n="fuzzRoutes">Discovered routes</div>
+            <div class="route-found-badge" id="result-fuzz-count"></div>
+          </div>
+          <table class="route-table">
+            <thead>
+              <tr>
+                <th data-i18n="fuzzColURL">URL</th>
+                <th data-i18n="fuzzColStatus">Status</th>
+                <th style="text-align:right" data-i18n="fuzzColHits">Hits</th>
+              </tr>
+            </thead>
+            <tbody id="result-fuzz-tbody"></tbody>
+          </table>
+        </div>
+
         <div class="error-box hidden" id="result-error">
           <span>⚠</span>
           <span id="result-error-msg"></span>
@@ -511,6 +543,11 @@ const i18n = {
     fieldHelp: {},
     warnLabel: {},
     warnHelp: {},
+    fuzzRoutes: 'Discovered routes',
+    fuzzColURL: 'URL',
+    fuzzColStatus: 'Status',
+    fuzzColHits: 'Hits',
+    fuzzNoneFound: 'No 2xx routes found.',
   },
   pt: {
     attacks: 'Ataques',
@@ -639,6 +676,11 @@ const i18n = {
     warnHelp: {
       gzipbomb: 'Envia bodies gzip que expandem no servidor.\nUm servidor vulnerável que descomprime o body pode travar ou ficar sem memória.\nUse somente em sistemas próprios ou com autorização expressa e por escrito.',
     },
+    fuzzRoutes: 'Rotas descobertas',
+    fuzzColURL: 'URL',
+    fuzzColStatus: 'Status',
+    fuzzColHits: 'Acessos',
+    fuzzNoneFound: 'Nenhuma rota 2xx encontrada.',
   },
 };
 
@@ -1043,6 +1085,59 @@ function renderHTTPResult(r) {
         return `<div class="status-chip ${cls}">HTTP ${code}: ${count}</div>`;
       }).join('');
   }
+
+  if (r.attack === 'fuzz' && r.path_status && Object.keys(r.path_status).length > 0) {
+    renderFuzzRoutes(r);
+  }
+}
+
+function renderFuzzRoutes(r) {
+  const section = document.getElementById('result-fuzz-routes');
+  const tbody   = document.getElementById('result-fuzz-tbody');
+  const countEl = document.getElementById('result-fuzz-count');
+
+  const baseURL = (r.target || '').replace(/\/$/, '');
+  const pathStatus = r.path_status || {};
+
+  // Sort by total hits desc; show all paths that got any response
+  const rows = Object.entries(pathStatus).map(([path, statuses]) => {
+    const total = Object.values(statuses).reduce((s, v) => s + v, 0);
+    const has2xx = Object.keys(statuses).some(c => parseInt(c) >= 200 && parseInt(c) < 300);
+    return { path, statuses, total, has2xx };
+  });
+
+  // Show 2xx first, then rest; within each group sort by total desc
+  rows.sort((a, b) => {
+    if (a.has2xx !== b.has2xx) return a.has2xx ? -1 : 1;
+    return b.total - a.total;
+  });
+
+  const found2xx = rows.filter(r => r.has2xx).length;
+  countEl.textContent = found2xx + ' found';
+
+  if (rows.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="3" style="color:var(--text-muted);text-align:center;padding:12px">${t('fuzzNoneFound')}</td></tr>`;
+  } else {
+    tbody.innerHTML = rows.map(({ path, statuses, total }) => {
+      const fullURL = baseURL + path;
+      const chips = Object.entries(statuses)
+        .sort(([a],[b]) => parseInt(a) - parseInt(b))
+        .map(([code, cnt]) => {
+          const cls = parseInt(code) >= 200 && parseInt(code) < 300 ? 'route-badge-2xx'
+            : parseInt(code) >= 300 && parseInt(code) < 400 ? 'route-badge-3xx'
+            : parseInt(code) >= 400 && parseInt(code) < 500 ? 'route-badge-4xx'
+            : parseInt(code) >= 500 ? 'route-badge-5xx' : 'route-badge-4xx';
+          return `<span class="${cls}">${code} ×${cnt}</span>`;
+        }).join('');
+      return `<tr>
+        <td><a class="route-link" href="${escHtml(fullURL)}" target="_blank" rel="noopener noreferrer">${escHtml(fullURL)}</a></td>
+        <td><div class="route-status-chips">${chips}</div></td>
+        <td class="route-count">${total}</td>
+      </tr>`;
+    }).join('');
+  }
+
+  section.classList.remove('hidden');
 }
 
 function renderConnResult(r) {
@@ -1079,7 +1174,7 @@ function showError(msg) {
 }
 
 function clearResults() {
-  ['result-http','result-conn','result-error','progress-section'].forEach(id => {
+  ['result-http','result-conn','result-error','progress-section','result-fuzz-routes'].forEach(id => {
     document.getElementById(id).classList.add('hidden');
   });
   document.getElementById('result-error-msg').textContent = '';
