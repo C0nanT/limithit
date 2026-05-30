@@ -42,7 +42,6 @@
     line-height: 1.5;
   }
 
-  /* ─── layout ─────────────────────────────────── */
   .app {
     display: grid;
     grid-template-rows: 44px 1fr;
@@ -51,7 +50,6 @@
     overflow: hidden;
   }
 
-  /* ─── header ─────────────────────────────────── */
   .header {
     grid-column: 1 / -1;
     display: flex;
@@ -62,12 +60,7 @@
     border-bottom: 1px solid var(--border);
     user-select: none;
   }
-  .header-logo {
-    font-size: 15px;
-    font-weight: 700;
-    color: var(--accent);
-    letter-spacing: -0.5px;
-  }
+  .header-logo { font-size: 15px; font-weight: 700; color: var(--accent); letter-spacing: -0.5px; }
   .header-logo span { color: var(--text-muted); font-weight: 400; }
   .header-badge {
     font-size: 10px;
@@ -78,18 +71,8 @@
     padding: 1px 6px;
   }
   .header-spacer { flex: 1; }
-  .header-status {
-    font-size: 11px;
-    color: var(--text-muted);
-    display: flex;
-    align-items: center;
-    gap: 6px;
-  }
-  .dot {
-    width: 7px; height: 7px;
-    border-radius: 50%;
-    background: var(--text-dim);
-  }
+  .header-status { font-size: 11px; color: var(--text-muted); display: flex; align-items: center; gap: 6px; }
+  .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--text-dim); }
   .dot.ready  { background: var(--green); box-shadow: 0 0 6px var(--green); }
   .dot.running{ background: var(--yellow); box-shadow: 0 0 6px var(--yellow); animation: pulse 1s infinite; }
   .dot.error  { background: var(--red); box-shadow: 0 0 6px var(--red); }
@@ -113,7 +96,6 @@
   .lang-toggle:hover { border-color: var(--accent); color: var(--text); }
   .lang-active { color: var(--accent); font-weight: 700; }
 
-  /* ─── sidebar ────────────────────────────────── */
   .sidebar {
     background: var(--bg-sidebar);
     border-right: 1px solid var(--border);
@@ -130,11 +112,7 @@
     text-transform: uppercase;
     border-bottom: 1px solid var(--border);
   }
-  .attack-list {
-    flex: 1;
-    overflow-y: auto;
-    padding: 6px 0;
-  }
+  .attack-list { flex: 1; overflow-y: auto; padding: 6px 0; }
   .attack-list::-webkit-scrollbar { width: 4px; }
   .attack-list::-webkit-scrollbar-track { background: transparent; }
   .attack-list::-webkit-scrollbar-thumb { background: var(--border-mid); border-radius: 2px; }
@@ -146,31 +124,12 @@
     transition: background .1s, border-color .1s;
   }
   .attack-item:hover { background: var(--bg-hover); }
-  .attack-item.active {
-    background: var(--bg-active);
-    border-left-color: var(--accent);
-  }
-  .attack-name {
-    font-weight: 600;
-    color: var(--text);
-    font-size: 13px;
-  }
+  .attack-item.active { background: var(--bg-active); border-left-color: var(--accent); }
+  .attack-name { font-weight: 600; color: var(--text); font-size: 13px; }
   .attack-item.active .attack-name { color: var(--accent); }
-  .attack-synopsis {
-    font-size: 10px;
-    color: var(--text-muted);
-    margin-top: 2px;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
+  .attack-synopsis { font-size: 10px; color: var(--text-muted); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
-  /* ─── main ───────────────────────────────────── */
-  .main {
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
-  }
+  .main { display: flex; flex-direction: column; overflow: hidden; }
 
   .empty-state {
     flex: 1;
@@ -184,13 +143,7 @@
   .empty-state .icon { font-size: 36px; }
   .empty-state p { font-size: 12px; }
 
-  /* ─── attack panel ───────────────────────────── */
-  .attack-panel {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
-  }
+  .attack-panel { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
   .panel-header {
     padding: 12px 20px;
     border-bottom: 1px solid var(--border);
@@ -199,15 +152,8 @@
     gap: 12px;
     flex-shrink: 0;
   }
-  .panel-title {
-    font-size: 15px;
-    font-weight: 700;
-    color: var(--accent);
-  }
-  .panel-synopsis {
-    font-size: 11px;
-    color: var(--text-muted);
-  }
+  .panel-title { font-size: 15px; font-weight: 700; color: var(--accent); }
+  .panel-synopsis { font-size: 11px; color: var(--text-muted); }
 
   .panel-body {
     flex: 1;
@@ -221,31 +167,11 @@
   .panel-body::-webkit-scrollbar-track { background: transparent; }
   .panel-body::-webkit-scrollbar-thumb { background: var(--border-mid); border-radius: 2px; }
 
-  /* ─── form ───────────────────────────────────── */
-  .form-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 12px 20px;
-  }
-  .form-field {
-    display: flex;
-    flex-direction: column;
-    gap: 5px;
-  }
+  .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px 20px; }
+  .form-field { display: flex; flex-direction: column; gap: 5px; }
   .form-field.full-width { grid-column: 1 / -1; }
-
-  .field-label {
-    font-size: 11px;
-    font-weight: 600;
-    color: var(--text-muted);
-    text-transform: uppercase;
-    letter-spacing: .5px;
-  }
-  .field-help {
-    font-size: 10px;
-    color: var(--text-dim);
-    margin-top: -3px;
-  }
+  .field-label { font-size: 11px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: .5px; }
+  .field-help { font-size: 10px; color: var(--text-dim); margin-top: -3px; }
 
   input[type="text"], input[type="number"], input[type="url"], select {
     width: 100%;
@@ -260,10 +186,7 @@
     transition: border-color .15s;
     appearance: none;
   }
-  input:focus, select:focus {
-    border-color: var(--accent);
-    box-shadow: 0 0 0 2px rgba(88,166,255,.15);
-  }
+  input:focus, select:focus { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(88,166,255,.15); }
   select {
     cursor: pointer;
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%236e7781'/%3E%3C/svg%3E");
@@ -273,7 +196,6 @@
   }
   input::placeholder { color: var(--text-dim); }
 
-  /* warn field */
   .warn-box {
     grid-column: 1 / -1;
     background: rgba(248,81,73,.07);
@@ -284,42 +206,13 @@
     flex-direction: column;
     gap: 8px;
   }
-  .warn-title {
-    font-size: 12px;
-    font-weight: 700;
-    color: var(--red);
-    display: flex;
-    align-items: center;
-    gap: 6px;
-  }
-  .warn-body {
-    font-size: 11px;
-    color: #c9a0a0;
-    white-space: pre-line;
-    line-height: 1.6;
-  }
-  .warn-ack {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    margin-top: 4px;
-    cursor: pointer;
-    user-select: none;
-  }
-  .warn-ack input[type="checkbox"] {
-    width: auto;
-    cursor: pointer;
-    accent-color: var(--red);
-  }
+  .warn-title { font-size: 12px; font-weight: 700; color: var(--red); display: flex; align-items: center; gap: 6px; }
+  .warn-body { font-size: 11px; color: #c9a0a0; white-space: pre-line; line-height: 1.6; }
+  .warn-ack { display: flex; align-items: center; gap: 8px; margin-top: 4px; cursor: pointer; user-select: none; }
+  .warn-ack input[type="checkbox"] { width: auto; cursor: pointer; accent-color: var(--red); }
   .warn-ack span { font-size: 11px; color: var(--text-muted); }
 
-  /* ─── actions ────────────────────────────────── */
-  .actions {
-    display: flex;
-    gap: 10px;
-    align-items: center;
-    flex-shrink: 0;
-  }
+  .actions { display: flex; gap: 10px; align-items: center; flex-shrink: 0; }
   .btn {
     font-family: var(--font-mono);
     font-size: 12px;
@@ -334,27 +227,13 @@
     gap: 6px;
   }
   .btn:disabled { opacity: .4; cursor: default; }
-  .btn-run {
-    background: var(--btn-run);
-    color: #fff;
-    letter-spacing: .3px;
-  }
+  .btn-run { background: var(--btn-run); color: #fff; letter-spacing: .3px; }
   .btn-run:hover:not(:disabled) { background: var(--btn-run-h); }
-  .btn-cancel {
-    background: transparent;
-    color: var(--red);
-    border: 1px solid var(--red);
-    opacity: .7;
-  }
+  .btn-cancel { background: transparent; color: var(--red); border: 1px solid var(--red); opacity: .7; }
   .btn-cancel:hover:not(:disabled) { background: rgba(248,81,73,.1); opacity: 1; }
-  .btn-clear {
-    background: transparent;
-    color: var(--text-muted);
-    border: 1px solid var(--border-mid);
-  }
+  .btn-clear { background: transparent; color: var(--text-muted); border: 1px solid var(--border-mid); }
   .btn-clear:hover:not(:disabled) { background: var(--bg-hover); color: var(--text); }
 
-  /* ─── progress ───────────────────────────────── */
   .progress-section {
     background: var(--bg-panel);
     border: 1px solid var(--border);
@@ -364,54 +243,19 @@
     flex-direction: column;
     gap: 10px;
   }
-  .section-title {
-    font-size: 10px;
-    font-weight: 600;
-    letter-spacing: 1px;
-    color: var(--text-muted);
-    text-transform: uppercase;
-  }
-  .progress-bar-wrap {
-    background: var(--bg-input);
-    border-radius: 3px;
-    height: 6px;
-    overflow: hidden;
-  }
-  .progress-bar-fill {
-    height: 100%;
-    background: var(--accent);
-    border-radius: 3px;
-    transition: width .4s ease;
-    min-width: 4px;
-  }
+  .section-title { font-size: 10px; font-weight: 600; letter-spacing: 1px; color: var(--text-muted); text-transform: uppercase; }
+  .progress-bar-wrap { background: var(--bg-input); border-radius: 3px; height: 6px; overflow: hidden; }
+  .progress-bar-fill { height: 100%; background: var(--accent); border-radius: 3px; transition: width .4s ease; min-width: 4px; }
   .progress-bar-fill.done { background: var(--green); }
-  .progress-stats {
-    display: flex;
-    gap: 18px;
-    flex-wrap: wrap;
-  }
-  .stat {
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-  }
-  .stat-label {
-    font-size: 9px;
-    color: var(--text-dim);
-    text-transform: uppercase;
-    letter-spacing: .5px;
-  }
-  .stat-value {
-    font-size: 14px;
-    font-weight: 700;
-    color: var(--text);
-  }
+  .progress-stats { display: flex; gap: 18px; flex-wrap: wrap; }
+  .stat { display: flex; flex-direction: column; gap: 2px; }
+  .stat-label { font-size: 9px; color: var(--text-dim); text-transform: uppercase; letter-spacing: .5px; }
+  .stat-value { font-size: 14px; font-weight: 700; color: var(--text); }
   .stat-value.green { color: var(--green); }
   .stat-value.yellow { color: var(--yellow); }
   .stat-value.red { color: var(--red); }
   .stat-value.blue { color: var(--accent); }
 
-  /* ─── result ─────────────────────────────────── */
   .result-section {
     background: var(--bg-panel);
     border: 1px solid var(--border);
@@ -421,91 +265,35 @@
     flex-direction: column;
     gap: 12px;
   }
-  .result-header {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-  }
-  .result-badge {
-    font-size: 10px;
-    font-weight: 700;
-    padding: 2px 8px;
-    border-radius: 10px;
-    text-transform: uppercase;
-    letter-spacing: .5px;
-  }
+  .result-header { display: flex; align-items: center; gap: 10px; }
+  .result-badge { font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 10px; text-transform: uppercase; letter-spacing: .5px; }
   .result-badge.pass { background: rgba(63,185,80,.15); color: var(--green); }
   .result-badge.fail { background: rgba(248,81,73,.15); color: var(--red); }
-
-  .result-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
-    gap: 10px;
-  }
-  .result-stat {
-    background: var(--bg-input);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    padding: 8px 12px;
-  }
-  .result-stat-label {
-    font-size: 9px;
-    color: var(--text-muted);
-    text-transform: uppercase;
-    letter-spacing: .5px;
-    margin-bottom: 4px;
-  }
-  .result-stat-value {
-    font-size: 17px;
-    font-weight: 700;
-  }
+  .result-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 10px; }
+  .result-stat { background: var(--bg-input); border: 1px solid var(--border); border-radius: var(--radius); padding: 8px 12px; }
+  .result-stat-label { font-size: 9px; color: var(--text-muted); text-transform: uppercase; letter-spacing: .5px; margin-bottom: 4px; }
+  .result-stat-value { font-size: 17px; font-weight: 700; }
   .result-stat-value.green { color: var(--green); }
   .result-stat-value.yellow { color: var(--yellow); }
   .result-stat-value.red { color: var(--red); }
   .result-stat-value.blue { color: var(--accent); }
   .result-stat-value.purple { color: var(--purple); }
+  .result-sub { font-size: 10px; color: var(--text-muted); margin-top: 3px; }
 
-  .result-sub {
-    font-size: 10px;
-    color: var(--text-muted);
-    margin-top: 3px;
-  }
-
-  .latency-row {
-    display: flex;
-    gap: 16px;
-    flex-wrap: wrap;
-  }
-  .latency-item {
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-  }
+  .latency-row { display: flex; gap: 16px; flex-wrap: wrap; }
+  .latency-item { display: flex; flex-direction: column; gap: 2px; }
   .latency-label { font-size: 9px; color: var(--text-dim); }
   .latency-value { font-size: 13px; font-weight: 600; color: var(--purple); }
 
-  .status-dist {
-    display: flex;
-    gap: 8px;
-    flex-wrap: wrap;
-  }
-  .status-chip {
-    font-size: 11px;
-    padding: 3px 10px;
-    border-radius: 12px;
-    font-weight: 600;
-  }
+  .status-dist { display: flex; gap: 8px; flex-wrap: wrap; }
+  .status-chip { font-size: 11px; padding: 3px 10px; border-radius: 12px; font-weight: 600; }
   .status-2xx { background: rgba(63,185,80,.12); color: var(--green); }
   .status-4xx { background: rgba(227,179,65,.12); color: var(--yellow); }
   .status-429 { background: rgba(240,136,62,.15); color: var(--orange); }
   .status-5xx { background: rgba(248,81,73,.12); color: var(--red); }
   .status-other { background: rgba(110,119,129,.12); color: var(--text-muted); }
 
-  .conn-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-    gap: 10px;
-  }
+  .conn-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; }
 
   .error-box {
     background: rgba(248,81,73,.07);
@@ -525,7 +313,6 @@
 <body>
 <div class="app">
 
-  <!-- header -->
   <header class="header">
     <div class="header-logo">⚡ limithit <span>/ admin</span></div>
     <div class="header-badge">local</div>
@@ -539,7 +326,6 @@
     </div>
   </header>
 
-  <!-- sidebar -->
   <aside class="sidebar">
     <div class="sidebar-title" data-i18n="attacks">Attacks</div>
     <div class="attack-list" id="attack-list">
@@ -547,7 +333,6 @@
     </div>
   </aside>
 
-  <!-- main -->
   <main class="main" id="main">
     <div class="empty-state" id="empty-state">
       <div class="icon">⚡</div>
@@ -561,10 +346,8 @@
       </div>
 
       <div class="panel-body">
-        <!-- form -->
         <div class="form-grid" id="form-grid"></div>
 
-        <!-- actions -->
         <div class="actions">
           <button class="btn btn-run" id="btn-run" onclick="runAttack()">
             <span data-i18n="btnRun">▶ Run Attack</span>
@@ -577,7 +360,6 @@
           </button>
         </div>
 
-        <!-- progress -->
         <div class="progress-section hidden" id="progress-section">
           <div class="section-title" data-i18n="progress">Progress</div>
           <div class="progress-bar-wrap">
@@ -615,7 +397,6 @@
           </div>
         </div>
 
-        <!-- result: http -->
         <div class="result-section hidden" id="result-http">
           <div class="result-header">
             <div class="section-title" data-i18n="result">Result</div>
@@ -632,7 +413,6 @@
           </div>
         </div>
 
-        <!-- result: conn (slowloris / wsflood) -->
         <div class="result-section hidden" id="result-conn">
           <div class="result-header">
             <div class="section-title" data-i18n="result">Result</div>
@@ -641,7 +421,6 @@
           <div class="conn-grid" id="result-conn-grid"></div>
         </div>
 
-        <!-- error -->
         <div class="error-box hidden" id="result-error">
           <span>⚠</span>
           <span id="result-error-msg"></span>
@@ -686,6 +465,11 @@ const i18n = {
     loadError: 'Failed to load attacks: ',
     urlRequired: 'Target URL is required.',
     warnRequired: 'You must acknowledge the warning before running this attack.',
+    synopses: {},
+    fieldLabel: {},
+    fieldHelp: {},
+    warnLabel: {},
+    warnHelp: {},
   },
   pt: {
     attacks: 'Ataques',
@@ -718,12 +502,116 @@ const i18n = {
     loadError: 'Falha ao carregar ataques: ',
     urlRequired: 'URL alvo é obrigatória.',
     warnRequired: 'Você deve confirmar o aviso antes de executar este ataque.',
+
+    synopses: {
+      flood:       'flood de requisições de alta vazão (sonda de carga/rate-limit)',
+      spoof:       'rotação de X-Forwarded-For em pool de IPs com cadência',
+      fuzz:        'enumeração de caminhos via wordlist (+ cache-bust opcional)',
+      slowloris:   'mantém conexões abertas com envio lento de headers',
+      gzipbomb:    'amplificação por descompressão via Content-Encoding: gzip',
+      wsflood:     'exaustão de conexões WebSocket (abre e mantém)',
+      headerbomb:  'headers gigantes e body com crescimento progressivo',
+      h2flood:     'flood de streams HTTP/2 multiplexados por poucas conexões',
+      methodspray: 'matriz método × caminho para encontrar rotas que burlam o rate-limit por verbo',
+      replay:      'replay de requisições capturadas de arquivo HAR ou texto',
+    },
+
+    fieldLabel: {
+      'url':              'URL alvo',
+      'total':            'Total de requisições',
+      'concurrency':      'Concorrência (workers)',
+      'timeout':          'Timeout (s)',
+      'method':           'Método HTTP',
+      'insecure':         'Ignorar verificação TLS',
+      'dial-timeout':     'Timeout de conexão (s)',
+      'hold':             'Duração de espera (s)',
+      'pacing':           'Cadência',
+      'rps':              'RPS alvo (poisson)',
+      'min-delay-ms':     'Delay mín ms (uniform/zipf)',
+      'max-delay-ms':     'Delay máx ms (uniform/zipf)',
+      'wordlist':         'Wordlist (vazio = embutida)',
+      'body':             'Corpo da requisição (opcional)',
+      'connections':      'Conexões',
+      'loop':             'Iterar pela lista',
+      'file':             'Arquivo de requisições',
+      'methods':          'Métodos HTTP (separados por vírgula)',
+      'ip-pool':          'Pool de IPs',
+      'xff-header':       'Nome do header XFF',
+      'cache-bust':       'Cache bust (adiciona _cb=<hex>)',
+      'header-count':     'Quantidade de headers inúteis',
+      'header-size':      'Bytes por header inútil',
+      'body-start':       'Tamanho inicial do body (bytes)',
+      'body-max':         'Tamanho máximo do body (bytes)',
+      'body-step':        'Passo de crescimento do body (0 = dobrar)',
+      'streams':          'Streams por conexão',
+      'header-interval':  'Intervalo de headers (s)',
+      'expanded-mb':      'Tamanho expandido do body (MB)',
+      'message-rate':     'Pings por segundo',
+      'replay.url':       'URL base (rótulo do relatório)',
+      'replay.total':     'Total de requisições (0 = tamanho do arquivo)',
+      'fuzz.url':         'URL base',
+      'methodspray.url':  'URL base',
+      'h2flood.url':      'URL alvo (HTTPS para HTTP/2)',
+      'wsflood.url':      'URL alvo',
+      'h2flood.connections': 'Conexões HTTP/2',
+      'wsflood.connections': 'Conexões WebSocket',
+      'slowloris.connections': 'Conexões',
+    },
+
+    fieldHelp: {
+      'fuzz.url':              'Esquema + host; caminhos vêm da wordlist',
+      'methodspray.url':       'Esquema + host apenas; caminhos vêm da wordlist',
+      'h2flood.url':           'Use https:// para negociar h2 via ALPN',
+      'wsflood.url':           'Use http:// ou ws:// para WS simples; https:// ou wss:// para TLS',
+      'replay.url':            'URLs individuais vêm do arquivo; isso rotula o relatório',
+      'slowloris.connections': 'Conexões simultâneas abertas para manter',
+      'wsflood.connections':   'Conexões para abrir e manter',
+      'h2flood.connections':   'Número de conexões TCP persistentes',
+      'slowloris.header-interval': 'Segundos entre envios de headers',
+      'h2flood.streams':       'Explora gaps de MaxConcurrentStreams (tente 100–1000)',
+      'spoof.ip-pool':         'CIDR "10.0.0.0/24", "file:ips.txt" ou lista separada por vírgula (obrigatório)',
+      'spoof.xff-header':      'Header usado para injetar o IP falso',
+      'methodspray.methods':   'Produto cruzado de métodos × caminhos da wordlist é disparado',
+      'replay.file':           'Arquivo HAR ou arquivo "MÉTODO URL" delimitado por linha',
+      'replay.loop':           'Repete em ciclo até --total ser atingido',
+      'wsflood.message-rate':  '0 = mantém silenciosamente',
+      'gzipbomb.expanded-mb':  'Tamanho descomprimido por requisição que o servidor deve processar',
+    },
+
+    warnLabel: {
+      gzipbomb: 'ATENÇÃO: Ataque de amplificação por descompressão',
+    },
+    warnHelp: {
+      gzipbomb: 'Envia bodies gzip que expandem no servidor.\nUm servidor vulnerável que descomprime o body pode travar ou ficar sem memória.\nUse somente em sistemas próprios ou com autorização expressa e por escrito.',
+    },
   },
 };
 
 let lang = localStorage.getItem('limithit-lang') || 'en';
 
 function t(key) { return (i18n[lang] || i18n.en)[key] ?? key; }
+
+function tSynopsis(attackName, fallback) {
+  return i18n[lang]?.synopses?.[attackName] || fallback;
+}
+function tFieldLabel(attackName, flag, fallback) {
+  const d = i18n[lang];
+  return d.fieldLabel?.[attackName + '.' + flag]
+      ?? d.fieldLabel?.[flag]
+      ?? fallback;
+}
+function tFieldHelp(attackName, flag, fallback) {
+  const d = i18n[lang];
+  return d.fieldHelp?.[attackName + '.' + flag]
+      ?? d.fieldHelp?.[flag]
+      ?? fallback;
+}
+function tWarnLabel(attackName, fallback) {
+  return i18n[lang]?.warnLabel?.[attackName] || fallback;
+}
+function tWarnHelp(attackName, fallback) {
+  return i18n[lang]?.warnHelp?.[attackName] || fallback;
+}
 
 function applyLang() {
   document.querySelectorAll('[data-i18n]').forEach(el => {
@@ -732,8 +620,11 @@ function applyLang() {
   document.getElementById('lang-en').className = lang === 'en' ? 'lang-active' : '';
   document.getElementById('lang-pt').className = lang === 'pt' ? 'lang-active' : '';
   document.documentElement.lang = lang === 'pt' ? 'pt-BR' : 'en';
-  // re-render form to update warn-ack text
-  if (selected) renderForm(selected);
+  if (selected) {
+    document.getElementById('panel-synopsis').textContent = tSynopsis(selected.name, selected.synopsis);
+    renderForm(selected);
+  }
+  renderSidebar();
 }
 
 function toggleLang() {
@@ -742,7 +633,7 @@ function toggleLang() {
   applyLang();
 }
 
-// ─── state ──────────────────────────────────────────────────────────────
+// ─── state ───────────────────────────────────────────────────────────────
 let allAttacks = [];
 let selected = null;
 let abortCtrl = null;
@@ -777,10 +668,11 @@ async function init() {
 // ─── sidebar ─────────────────────────────────────────────────────────────
 function renderSidebar() {
   const list = document.getElementById('attack-list');
+  if (!allAttacks.length) return;
   list.innerHTML = allAttacks.map(a => `
-    <div class="attack-item" id="item-${a.name}" onclick="selectAttack('${a.name}')">
+    <div class="attack-item${selected?.name === a.name ? ' active' : ''}" id="item-${a.name}" onclick="selectAttack('${a.name}')">
       <div class="attack-name">${a.name}</div>
-      <div class="attack-synopsis">${a.synopsis}</div>
+      <div class="attack-synopsis">${escHtml(tSynopsis(a.name, a.synopsis))}</div>
     </div>
   `).join('');
 }
@@ -797,7 +689,7 @@ function selectAttack(name) {
   document.getElementById('empty-state').classList.add('hidden');
   document.getElementById('attack-panel').classList.remove('hidden');
   document.getElementById('panel-title').textContent = name;
-  document.getElementById('panel-synopsis').textContent = selected.synopsis;
+  document.getElementById('panel-synopsis').textContent = tSynopsis(name, selected.synopsis);
 
   renderForm(selected);
   clearResults();
@@ -807,23 +699,22 @@ function selectAttack(name) {
 function renderForm(attack) {
   const grid = document.getElementById('form-grid');
   grid.innerHTML = '';
-
   for (const field of attack.fields) {
     if (field.kind === 'warn') {
-      grid.appendChild(buildWarnField(field));
+      grid.appendChild(buildWarnField(field, attack.name));
     } else {
       grid.appendChild(buildInputField(field, attack.name));
     }
   }
 }
 
-function buildWarnField(field) {
+function buildWarnField(field, attackName) {
   const id = 'field-' + field.flag;
   const div = document.createElement('div');
   div.className = 'warn-box';
   div.innerHTML = `
-    <div class="warn-title">⚠ ${escHtml(field.label)}</div>
-    <div class="warn-body">${escHtml(field.help || '')}</div>
+    <div class="warn-title">⚠ ${escHtml(tWarnLabel(attackName, field.label))}</div>
+    <div class="warn-body">${escHtml(tWarnHelp(attackName, field.help || ''))}</div>
     <label class="warn-ack">
       <input type="checkbox" id="${id}" data-flag="${escHtml(field.flag)}" data-kind="warn">
       <span>${t('warnAck')}</span>
@@ -838,6 +729,9 @@ function buildInputField(field, attackName) {
   div.className = 'form-field';
   if (field.kind === 'url' || field.kind === 'string') div.classList.add('full-width');
 
+  const label = tFieldLabel(attackName, field.flag, field.label);
+  const help  = tFieldHelp(attackName, field.flag, field.help);
+
   let inputHtml = '';
   switch (field.kind) {
     case 'select':
@@ -851,8 +745,8 @@ function buildInputField(field, attackName) {
       </select>`;
       break;
     case 'bool':
-      const trueSelected = field.default === 'true' ? ' selected' : '';
-      const falseSelected = field.default !== 'true' ? ' selected' : '';
+      const trueSelected  = field.default === 'true'  ? ' selected' : '';
+      const falseSelected = field.default !== 'true'  ? ' selected' : '';
       inputHtml = `<select id="${id}" data-flag="${escHtml(field.flag)}" data-kind="bool">
         <option value="true"${trueSelected}>true</option>
         <option value="false"${falseSelected}>false</option>
@@ -868,13 +762,13 @@ function buildInputField(field, attackName) {
       const defVal = field.default || (field.kind === 'url' ? (urlDefaults[attackName] || 'http://localhost:8080') : '');
       inputHtml = `<input type="text" id="${id}"
         data-flag="${escHtml(field.flag)}" data-kind="${escHtml(field.kind)}"
-        value="${escHtml(defVal)}" placeholder="${escHtml(field.kind === 'url' ? 'http://localhost:8080/...' : field.label)}">`;
+        value="${escHtml(defVal)}" placeholder="${escHtml(field.kind === 'url' ? 'http://localhost:8080/...' : label)}">`;
     }
   }
 
   div.innerHTML = `
-    <div class="field-label">${escHtml(field.label)}</div>
-    ${field.help && field.kind !== 'warn' ? `<div class="field-help">${escHtml(field.help)}</div>` : ''}
+    <div class="field-label">${escHtml(label)}</div>
+    ${help && field.kind !== 'warn' ? `<div class="field-help">${escHtml(help)}</div>` : ''}
     ${inputHtml}
   `;
   return div;
@@ -944,9 +838,7 @@ async function runAttack() {
 
     await streamSSE(res.body);
   } catch (e) {
-    if (e.name !== 'AbortError') {
-      showError(e.message);
-    }
+    if (e.name !== 'AbortError') showError(e.message);
   } finally {
     setRunning(false);
   }
@@ -960,9 +852,7 @@ function cancelRun() {
 async function streamSSE(body) {
   const reader = body.getReader();
   const decoder = new TextDecoder();
-  let buf = '';
-  let event = '';
-  let data = '';
+  let buf = '', event = '', data = '';
 
   while (true) {
     const {done, value} = await reader.read();
@@ -973,16 +863,10 @@ async function streamSSE(body) {
     buf = lines.pop();
 
     for (const line of lines) {
-      if (line.startsWith('event: ')) {
-        event = line.slice(7).trim();
-      } else if (line.startsWith('data: ')) {
-        data = line.slice(6).trim();
-      } else if (line === '') {
-        if (event && data) {
-          handleSSEEvent(event, data);
-          event = '';
-          data = '';
-        }
+      if (line.startsWith('event: '))      { event = line.slice(7).trim(); }
+      else if (line.startsWith('data: '))  { data  = line.slice(6).trim(); }
+      else if (line === '') {
+        if (event && data) { handleSSEEvent(event, data); event = ''; data = ''; }
       }
     }
   }
@@ -991,24 +875,15 @@ async function streamSSE(body) {
 function handleSSEEvent(event, data) {
   const payload = JSON.parse(data);
   switch (event) {
-    case 'progress':
-      updateProgress(payload);
-      break;
-    case 'done':
-      finishProgress();
-      renderResult(payload);
-      break;
-    case 'error':
-      finishProgress();
-      showError(payload.message);
-      break;
+    case 'progress': updateProgress(payload); break;
+    case 'done':     finishProgress(); renderResult(payload); break;
+    case 'error':    finishProgress(); showError(payload.message); break;
   }
 }
 
 // ─── progress UI ─────────────────────────────────────────────────────────
 function showProgress(total) {
-  const sec = document.getElementById('progress-section');
-  sec.classList.remove('hidden');
+  document.getElementById('progress-section').classList.remove('hidden');
   document.getElementById('prog-total').textContent = total;
   document.getElementById('prog-sent').textContent = '0';
   document.getElementById('prog-ok').textContent = '0';
@@ -1022,14 +897,13 @@ function showProgress(total) {
 }
 
 function updateProgress(p) {
-  document.getElementById('prog-sent').textContent = p.Sent || 0;
-  document.getElementById('prog-total').textContent = p.Total || '?';
-  document.getElementById('prog-ok').textContent = p.Success || 0;
-  document.getElementById('prog-rl').textContent = p.RateLimited || 0;
-  document.getElementById('prog-err').textContent = p.OtherErr || 0;
-  document.getElementById('prog-rps').textContent = p.RPS ? p.RPS.toFixed(1) : '—';
+  document.getElementById('prog-sent').textContent    = p.Sent || 0;
+  document.getElementById('prog-total').textContent   = p.Total || '?';
+  document.getElementById('prog-ok').textContent      = p.Success || 0;
+  document.getElementById('prog-rl').textContent      = p.RateLimited || 0;
+  document.getElementById('prog-err').textContent     = p.OtherErr || 0;
+  document.getElementById('prog-rps').textContent     = p.RPS ? p.RPS.toFixed(1) : '—';
   document.getElementById('prog-elapsed').textContent = p.Elapsed ? fmtNs(p.Elapsed) : '—';
-
   const pct = p.Total > 0 ? Math.min(100, (p.Sent / p.Total) * 100) : 0;
   document.getElementById('progress-bar').style.width = pct + '%';
 }
@@ -1043,19 +917,13 @@ function finishProgress() {
 // ─── result rendering ─────────────────────────────────────────────────────
 function renderResult(payload) {
   const {type, report} = payload;
-
-  if (type === 'http') {
-    renderHTTPResult(report);
-  } else if (type === 'conn') {
-    renderConnResult(report);
-  }
-
+  if (type === 'http')       renderHTTPResult(report);
+  else if (type === 'conn')  renderConnResult(report);
   document.getElementById('btn-clear').classList.remove('hidden');
 }
 
 function renderHTTPResult(r) {
-  const sec = document.getElementById('result-http');
-  sec.classList.remove('hidden');
+  document.getElementById('result-http').classList.remove('hidden');
 
   const badge = document.getElementById('result-http-badge');
   const vulnerable = r.too_many === 0 && r.success > 0;
@@ -1063,8 +931,7 @@ function renderHTTPResult(r) {
   badge.textContent = vulnerable ? t('vulnerable') : r.too_many > 0 ? t('rateLimited') : t('done');
 
   const lbls = t('httpStatLabels');
-  const grid = document.getElementById('result-http-grid');
-  grid.innerHTML = [
+  document.getElementById('result-http-grid').innerHTML = [
     {label: lbls[0], value: r.sent,              cls: 'blue'},
     {label: lbls[1], value: r.success,            cls: 'green'},
     {label: lbls[2], value: r.too_many,           cls: 'yellow'},
@@ -1106,8 +973,7 @@ function renderHTTPResult(r) {
 }
 
 function renderConnResult(r) {
-  const sec = document.getElementById('result-conn');
-  sec.classList.remove('hidden');
+  document.getElementById('result-conn').classList.remove('hidden');
 
   const badge = document.getElementById('result-conn-badge');
   const vulnerable = r.DroppedByServer === 0 && r.Established > 0;
@@ -1134,9 +1000,8 @@ function renderConnResult(r) {
 
 // ─── helpers ──────────────────────────────────────────────────────────────
 function showError(msg) {
-  const el = document.getElementById('result-error');
   document.getElementById('result-error-msg').textContent = msg;
-  el.classList.remove('hidden');
+  document.getElementById('result-error').classList.remove('hidden');
   document.getElementById('btn-clear').classList.remove('hidden');
 }
 
@@ -1152,8 +1017,8 @@ function clearResults() {
 
 function setRunning(val) {
   running = val;
-  const dot = document.getElementById('status-dot');
-  const txt = document.getElementById('status-text');
+  const dot    = document.getElementById('status-dot');
+  const txt    = document.getElementById('status-text');
   const btnRun = document.getElementById('btn-run');
   const btnCancel = document.getElementById('btn-cancel');
 
@@ -1174,21 +1039,21 @@ function setRunning(val) {
   });
   if (selected) {
     const activeItem = document.getElementById('item-' + selected.name);
-    if (activeItem) { activeItem.style.opacity = ''; }
+    if (activeItem) activeItem.style.opacity = '';
   }
 }
 
 function fmtNs(ns) {
   if (!ns) return '—';
   const ms = ns / 1e6;
-  if (ms < 1) return (ns / 1e3).toFixed(1) + 'µs';
+  if (ms < 1)    return (ns / 1e3).toFixed(1) + 'µs';
   if (ms < 1000) return ms.toFixed(1) + 'ms';
   return (ms / 1000).toFixed(2) + 's';
 }
 
 function fmtBytes(b) {
-  if (!b) return '0 B';
-  if (b < 1024) return b + ' B';
+  if (!b)            return '0 B';
+  if (b < 1024)      return b + ' B';
   if (b < 1024*1024) return (b/1024).toFixed(1) + ' KB';
   return (b/(1024*1024)).toFixed(2) + ' MB';
 }
