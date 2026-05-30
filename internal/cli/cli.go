@@ -22,6 +22,7 @@ import (
 	"github.com/conantorreswf/limithit/internal/safety"
 	"github.com/conantorreswf/limithit/internal/scenario"
 	"github.com/conantorreswf/limithit/internal/version"
+	"github.com/conantorreswf/limithit/internal/webui"
 )
 
 func Run(args []string, stdout, stderr io.Writer) int {
@@ -45,6 +46,8 @@ func Run(args []string, stdout, stderr io.Writer) int {
 		return runInit(rest, stdout, stderr)
 	case "run":
 		return runScenario(ctx, rest, stdout, stderr)
+	case "webui":
+		return runWebUI(ctx, rest, stdout, stderr)
 	default:
 		a, ok := attacks.Lookup(cmd)
 		if !ok {
@@ -61,7 +64,8 @@ func printRoot(w io.Writer) {
 	fmt.Fprintln(w, `Usage:
   limithit <command> [flags] <url>
   limithit run <scenario.yaml> [--continue-on-fail]
-  limithit init [config.yaml]`)
+  limithit init [config.yaml]
+  limithit webui [--port 9090]`)
 	fmt.Fprintln(w)
 	fmt.Fprintln(w, "Attack commands:")
 	for _, a := range attacks.All() {
@@ -71,6 +75,9 @@ func printRoot(w io.Writer) {
 	fmt.Fprintln(w, "Scenario commands:")
 	fmt.Fprintln(w, "  init          scaffold a starter limithit.yaml")
 	fmt.Fprintln(w, "  run           execute a scenario file and print combined report")
+	fmt.Fprintln(w)
+	fmt.Fprintln(w, "Admin panel:")
+	fmt.Fprintln(w, "  webui         start the browser-based admin panel (default :9090)")
 	fmt.Fprintln(w)
 	fmt.Fprintln(w, `Run "limithit <command> -h" for command-specific flags.`)
 }
@@ -411,4 +418,21 @@ func maybeInterrupted(ctx context.Context, w io.Writer) {
 	if ctx.Err() != nil {
 		fmt.Fprintln(w, "\n(interrupted by signal — totals reflect requests sent before cancellation)")
 	}
+}
+
+func runWebUI(ctx context.Context, args []string, stdout, stderr io.Writer) int {
+	fs := flag.NewFlagSet("webui", flag.ContinueOnError)
+	fs.SetOutput(stderr)
+	port := fs.String("port", "9090", "port to listen on")
+	if err := fs.Parse(args); err != nil {
+		return 2
+	}
+	addr := "127.0.0.1:" + *port
+	fmt.Fprintf(stdout, "limithit admin panel → http://%s\n", addr)
+	fmt.Fprintln(stdout, "Press Ctrl+C to stop.")
+	if err := webui.Serve(ctx, addr); err != nil {
+		fmt.Fprintf(stderr, "webui: %s\n", err)
+		return 1
+	}
+	return 0
 }

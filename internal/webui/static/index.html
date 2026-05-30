@@ -1,0 +1,1105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>limithit · admin panel</title>
+<style>
+  :root {
+    --bg:         #0a0d12;
+    --bg-sidebar: #0e1218;
+    --bg-panel:   #131920;
+    --bg-input:   #0d1117;
+    --bg-hover:   #1a2230;
+    --bg-active:  #1a2d47;
+    --border:     #1e2d3d;
+    --border-mid: #243448;
+    --text:       #c9d1d9;
+    --text-muted: #6e7781;
+    --text-dim:   #3d4a5c;
+    --accent:     #58a6ff;
+    --green:      #3fb950;
+    --yellow:     #e3b341;
+    --red:        #f85149;
+    --orange:     #f0883e;
+    --purple:     #bc8cff;
+    --btn-run:    #238636;
+    --btn-run-h:  #2ea043;
+    --btn-cancel: #6e2a2a;
+    --btn-cancel-h:#b91c1c;
+    --radius:     6px;
+    --font-mono:  'SF Mono', 'Fira Code', 'Cascadia Code', 'Consolas', monospace;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html, body {
+    height: 100%;
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-mono);
+    font-size: 13px;
+    line-height: 1.5;
+  }
+
+  /* ─── layout ─────────────────────────────────── */
+  .app {
+    display: grid;
+    grid-template-rows: 44px 1fr;
+    grid-template-columns: 260px 1fr;
+    height: 100vh;
+    overflow: hidden;
+  }
+
+  /* ─── header ─────────────────────────────────── */
+  .header {
+    grid-column: 1 / -1;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 0 16px;
+    background: var(--bg-sidebar);
+    border-bottom: 1px solid var(--border);
+    user-select: none;
+  }
+  .header-logo {
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--accent);
+    letter-spacing: -0.5px;
+  }
+  .header-logo span { color: var(--text-muted); font-weight: 400; }
+  .header-badge {
+    font-size: 10px;
+    background: var(--bg-active);
+    color: var(--accent);
+    border: 1px solid var(--border-mid);
+    border-radius: 4px;
+    padding: 1px 6px;
+  }
+  .header-spacer { flex: 1; }
+  .header-status {
+    font-size: 11px;
+    color: var(--text-muted);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .dot {
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    background: var(--text-dim);
+  }
+  .dot.ready  { background: var(--green); box-shadow: 0 0 6px var(--green); }
+  .dot.running{ background: var(--yellow); box-shadow: 0 0 6px var(--yellow); animation: pulse 1s infinite; }
+  .dot.error  { background: var(--red); box-shadow: 0 0 6px var(--red); }
+
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+
+  /* ─── sidebar ────────────────────────────────── */
+  .sidebar {
+    background: var(--bg-sidebar);
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+  .sidebar-title {
+    padding: 10px 14px 8px;
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 1px;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    border-bottom: 1px solid var(--border);
+  }
+  .attack-list {
+    flex: 1;
+    overflow-y: auto;
+    padding: 6px 0;
+  }
+  .attack-list::-webkit-scrollbar { width: 4px; }
+  .attack-list::-webkit-scrollbar-track { background: transparent; }
+  .attack-list::-webkit-scrollbar-thumb { background: var(--border-mid); border-radius: 2px; }
+
+  .attack-item {
+    padding: 9px 14px;
+    cursor: pointer;
+    border-left: 2px solid transparent;
+    transition: background .1s, border-color .1s;
+  }
+  .attack-item:hover { background: var(--bg-hover); }
+  .attack-item.active {
+    background: var(--bg-active);
+    border-left-color: var(--accent);
+  }
+  .attack-name {
+    font-weight: 600;
+    color: var(--text);
+    font-size: 13px;
+  }
+  .attack-item.active .attack-name { color: var(--accent); }
+  .attack-synopsis {
+    font-size: 10px;
+    color: var(--text-muted);
+    margin-top: 2px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  /* ─── main ───────────────────────────────────── */
+  .main {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  .empty-state {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-muted);
+    gap: 10px;
+  }
+  .empty-state .icon { font-size: 36px; }
+  .empty-state p { font-size: 12px; }
+
+  /* ─── attack panel ───────────────────────────── */
+  .attack-panel {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+  .panel-header {
+    padding: 12px 20px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: baseline;
+    gap: 12px;
+    flex-shrink: 0;
+  }
+  .panel-title {
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--accent);
+  }
+  .panel-synopsis {
+    font-size: 11px;
+    color: var(--text-muted);
+  }
+
+  .panel-body {
+    flex: 1;
+    overflow-y: auto;
+    padding: 18px 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+  }
+  .panel-body::-webkit-scrollbar { width: 4px; }
+  .panel-body::-webkit-scrollbar-track { background: transparent; }
+  .panel-body::-webkit-scrollbar-thumb { background: var(--border-mid); border-radius: 2px; }
+
+  /* ─── form ───────────────────────────────────── */
+  .form-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px 20px;
+  }
+  .form-field {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+  }
+  .form-field.full-width { grid-column: 1 / -1; }
+
+  .field-label {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: .5px;
+  }
+  .field-help {
+    font-size: 10px;
+    color: var(--text-dim);
+    margin-top: -3px;
+  }
+
+  input[type="text"], input[type="number"], input[type="url"], select {
+    width: 100%;
+    background: var(--bg-input);
+    border: 1px solid var(--border-mid);
+    border-radius: var(--radius);
+    color: var(--text);
+    font-family: var(--font-mono);
+    font-size: 12px;
+    padding: 7px 10px;
+    outline: none;
+    transition: border-color .15s;
+    appearance: none;
+  }
+  input:focus, select:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 2px rgba(88,166,255,.15);
+  }
+  select {
+    cursor: pointer;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%236e7781'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 10px center;
+    padding-right: 28px;
+  }
+  input::placeholder { color: var(--text-dim); }
+
+  /* warn field */
+  .warn-box {
+    grid-column: 1 / -1;
+    background: rgba(248,81,73,.07);
+    border: 1px solid rgba(248,81,73,.3);
+    border-radius: var(--radius);
+    padding: 12px 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .warn-title {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--red);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .warn-body {
+    font-size: 11px;
+    color: #c9a0a0;
+    white-space: pre-line;
+    line-height: 1.6;
+  }
+  .warn-ack {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 4px;
+    cursor: pointer;
+    user-select: none;
+  }
+  .warn-ack input[type="checkbox"] {
+    width: auto;
+    cursor: pointer;
+    accent-color: var(--red);
+  }
+  .warn-ack span { font-size: 11px; color: var(--text-muted); }
+
+  /* ─── actions ────────────────────────────────── */
+  .actions {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    flex-shrink: 0;
+  }
+  .btn {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    font-weight: 600;
+    border: none;
+    border-radius: var(--radius);
+    padding: 8px 18px;
+    cursor: pointer;
+    transition: background .15s, opacity .15s;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .btn:disabled { opacity: .4; cursor: default; }
+  .btn-run {
+    background: var(--btn-run);
+    color: #fff;
+    letter-spacing: .3px;
+  }
+  .btn-run:hover:not(:disabled) { background: var(--btn-run-h); }
+  .btn-cancel {
+    background: transparent;
+    color: var(--red);
+    border: 1px solid var(--red);
+    opacity: .7;
+  }
+  .btn-cancel:hover:not(:disabled) { background: rgba(248,81,73,.1); opacity: 1; }
+  .btn-clear {
+    background: transparent;
+    color: var(--text-muted);
+    border: 1px solid var(--border-mid);
+  }
+  .btn-clear:hover:not(:disabled) { background: var(--bg-hover); color: var(--text); }
+
+  /* ─── progress ───────────────────────────────── */
+  .progress-section {
+    background: var(--bg-panel);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 14px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .section-title {
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 1px;
+    color: var(--text-muted);
+    text-transform: uppercase;
+  }
+  .progress-bar-wrap {
+    background: var(--bg-input);
+    border-radius: 3px;
+    height: 6px;
+    overflow: hidden;
+  }
+  .progress-bar-fill {
+    height: 100%;
+    background: var(--accent);
+    border-radius: 3px;
+    transition: width .4s ease;
+    min-width: 4px;
+  }
+  .progress-bar-fill.done { background: var(--green); }
+  .progress-stats {
+    display: flex;
+    gap: 18px;
+    flex-wrap: wrap;
+  }
+  .stat {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+  .stat-label {
+    font-size: 9px;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    letter-spacing: .5px;
+  }
+  .stat-value {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--text);
+  }
+  .stat-value.green { color: var(--green); }
+  .stat-value.yellow { color: var(--yellow); }
+  .stat-value.red { color: var(--red); }
+  .stat-value.blue { color: var(--accent); }
+
+  /* ─── result ─────────────────────────────────── */
+  .result-section {
+    background: var(--bg-panel);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 14px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  .result-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .result-badge {
+    font-size: 10px;
+    font-weight: 700;
+    padding: 2px 8px;
+    border-radius: 10px;
+    text-transform: uppercase;
+    letter-spacing: .5px;
+  }
+  .result-badge.pass { background: rgba(63,185,80,.15); color: var(--green); }
+  .result-badge.fail { background: rgba(248,81,73,.15); color: var(--red); }
+
+  .result-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+    gap: 10px;
+  }
+  .result-stat {
+    background: var(--bg-input);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 8px 12px;
+  }
+  .result-stat-label {
+    font-size: 9px;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: .5px;
+    margin-bottom: 4px;
+  }
+  .result-stat-value {
+    font-size: 17px;
+    font-weight: 700;
+  }
+  .result-stat-value.green { color: var(--green); }
+  .result-stat-value.yellow { color: var(--yellow); }
+  .result-stat-value.red { color: var(--red); }
+  .result-stat-value.blue { color: var(--accent); }
+  .result-stat-value.purple { color: var(--purple); }
+
+  .result-sub {
+    font-size: 10px;
+    color: var(--text-muted);
+    margin-top: 3px;
+  }
+
+  .latency-row {
+    display: flex;
+    gap: 16px;
+    flex-wrap: wrap;
+  }
+  .latency-item {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+  .latency-label { font-size: 9px; color: var(--text-dim); }
+  .latency-value { font-size: 13px; font-weight: 600; color: var(--purple); }
+
+  .status-dist {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+  .status-chip {
+    font-size: 11px;
+    padding: 3px 10px;
+    border-radius: 12px;
+    font-weight: 600;
+  }
+  .status-2xx { background: rgba(63,185,80,.12); color: var(--green); }
+  .status-4xx { background: rgba(227,179,65,.12); color: var(--yellow); }
+  .status-429 { background: rgba(240,136,62,.15); color: var(--orange); }
+  .status-5xx { background: rgba(248,81,73,.12); color: var(--red); }
+  .status-other { background: rgba(110,119,129,.12); color: var(--text-muted); }
+
+  .conn-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: 10px;
+  }
+
+  .error-box {
+    background: rgba(248,81,73,.07);
+    border: 1px solid rgba(248,81,73,.25);
+    border-radius: var(--radius);
+    padding: 10px 14px;
+    color: var(--red);
+    font-size: 12px;
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+  }
+
+  .hidden { display: none !important; }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- header -->
+  <header class="header">
+    <div class="header-logo">⚡ limithit <span>/ admin</span></div>
+    <div class="header-badge">local</div>
+    <div class="header-spacer"></div>
+    <div class="header-status">
+      <div class="dot" id="status-dot"></div>
+      <span id="status-text">idle</span>
+    </div>
+  </header>
+
+  <!-- sidebar -->
+  <aside class="sidebar">
+    <div class="sidebar-title">Attacks</div>
+    <div class="attack-list" id="attack-list">
+      <div style="padding:16px;color:var(--text-muted);font-size:11px;">loading…</div>
+    </div>
+  </aside>
+
+  <!-- main -->
+  <main class="main" id="main">
+    <div class="empty-state" id="empty-state">
+      <div class="icon">⚡</div>
+      <p>Select an attack from the sidebar</p>
+    </div>
+
+    <div class="attack-panel hidden" id="attack-panel">
+      <div class="panel-header">
+        <div class="panel-title" id="panel-title"></div>
+        <div class="panel-synopsis" id="panel-synopsis"></div>
+      </div>
+
+      <div class="panel-body">
+        <!-- form -->
+        <div class="form-grid" id="form-grid"></div>
+
+        <!-- actions -->
+        <div class="actions">
+          <button class="btn btn-run" id="btn-run" onclick="runAttack()">
+            ▶ Run Attack
+          </button>
+          <button class="btn btn-cancel hidden" id="btn-cancel" onclick="cancelRun()">
+            ✕ Cancel
+          </button>
+          <button class="btn btn-clear hidden" id="btn-clear" onclick="clearResults()">
+            Clear
+          </button>
+        </div>
+
+        <!-- progress -->
+        <div class="progress-section hidden" id="progress-section">
+          <div class="section-title">Progress</div>
+          <div class="progress-bar-wrap">
+            <div class="progress-bar-fill" id="progress-bar" style="width:0%"></div>
+          </div>
+          <div class="progress-stats">
+            <div class="stat">
+              <div class="stat-label">Sent</div>
+              <div class="stat-value blue" id="prog-sent">0</div>
+            </div>
+            <div class="stat">
+              <div class="stat-label">Total</div>
+              <div class="stat-value" id="prog-total">0</div>
+            </div>
+            <div class="stat">
+              <div class="stat-label">Success</div>
+              <div class="stat-value green" id="prog-ok">0</div>
+            </div>
+            <div class="stat">
+              <div class="stat-label">Rate-limited</div>
+              <div class="stat-value yellow" id="prog-rl">0</div>
+            </div>
+            <div class="stat">
+              <div class="stat-label">Errors</div>
+              <div class="stat-value red" id="prog-err">0</div>
+            </div>
+            <div class="stat">
+              <div class="stat-label">RPS</div>
+              <div class="stat-value" id="prog-rps">—</div>
+            </div>
+            <div class="stat">
+              <div class="stat-label">Elapsed</div>
+              <div class="stat-value" id="prog-elapsed">—</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- result: http -->
+        <div class="result-section hidden" id="result-http">
+          <div class="result-header">
+            <div class="section-title">Result</div>
+            <div class="result-badge" id="result-http-badge">pass</div>
+          </div>
+          <div class="result-grid" id="result-http-grid"></div>
+          <div>
+            <div class="section-title" style="margin-bottom:8px">Latency</div>
+            <div class="latency-row" id="result-latency"></div>
+          </div>
+          <div>
+            <div class="section-title" style="margin-bottom:8px">Status distribution</div>
+            <div class="status-dist" id="result-status-dist"></div>
+          </div>
+        </div>
+
+        <!-- result: conn (slowloris / wsflood) -->
+        <div class="result-section hidden" id="result-conn">
+          <div class="result-header">
+            <div class="section-title">Result</div>
+            <div class="result-badge" id="result-conn-badge">pass</div>
+          </div>
+          <div class="conn-grid" id="result-conn-grid"></div>
+        </div>
+
+        <!-- error -->
+        <div class="error-box hidden" id="result-error">
+          <span>⚠</span>
+          <span id="result-error-msg"></span>
+        </div>
+      </div>
+    </div>
+  </main>
+
+</div>
+
+<script>
+// ─── state ──────────────────────────────────────────────────────────────
+let allAttacks = [];
+let selected = null;       // current attack metadata
+let abortCtrl = null;      // fetch abort controller
+let running = false;
+
+const urlDefaults = {
+  flood:       'http://localhost:8080/api/ping',
+  spoof:       'http://localhost:8080/api/ping',
+  h2flood:     'http://localhost:8080/api/ping',
+  methodspray: 'http://localhost:8080/api/ping',
+  replay:      'http://localhost:8080/api/ping',
+  headerbomb:  'http://localhost:8080/api/echo',
+  gzipbomb:    'http://localhost:8080/api/gzip',
+  wsflood:     'ws://localhost:8080/ws/echo',
+  fuzz:        'http://localhost:8080',
+  slowloris:   'http://localhost:8080',
+};
+
+// ─── init ────────────────────────────────────────────────────────────────
+async function init() {
+  try {
+    const res = await fetch('/api/attacks');
+    allAttacks = await res.json();
+    renderSidebar();
+  } catch (e) {
+    document.getElementById('attack-list').innerHTML =
+      `<div style="padding:16px;color:var(--red);font-size:11px;">Failed to load attacks: ${e.message}</div>`;
+  }
+}
+
+// ─── sidebar ─────────────────────────────────────────────────────────────
+function renderSidebar() {
+  const list = document.getElementById('attack-list');
+  list.innerHTML = allAttacks.map(a => `
+    <div class="attack-item" id="item-${a.name}" onclick="selectAttack('${a.name}')">
+      <div class="attack-name">${a.name}</div>
+      <div class="attack-synopsis">${a.synopsis}</div>
+    </div>
+  `).join('');
+}
+
+function selectAttack(name) {
+  if (running) return;
+  selected = allAttacks.find(a => a.name === name);
+  if (!selected) return;
+
+  document.querySelectorAll('.attack-item').forEach(el => el.classList.remove('active'));
+  const item = document.getElementById('item-' + name);
+  if (item) item.classList.add('active');
+
+  document.getElementById('empty-state').classList.add('hidden');
+  document.getElementById('attack-panel').classList.remove('hidden');
+  document.getElementById('panel-title').textContent = name;
+  document.getElementById('panel-synopsis').textContent = selected.synopsis;
+
+  renderForm(selected);
+  clearResults();
+}
+
+// ─── form builder ────────────────────────────────────────────────────────
+function renderForm(attack) {
+  const grid = document.getElementById('form-grid');
+  grid.innerHTML = '';
+
+  for (const field of attack.fields) {
+    if (field.kind === 'warn') {
+      grid.appendChild(buildWarnField(field));
+    } else {
+      grid.appendChild(buildInputField(field, attack.name));
+    }
+  }
+}
+
+function buildWarnField(field) {
+  const id = 'field-' + field.flag;
+  const div = document.createElement('div');
+  div.className = 'warn-box';
+  div.innerHTML = `
+    <div class="warn-title">⚠ ${escHtml(field.label)}</div>
+    <div class="warn-body">${escHtml(field.help || '')}</div>
+    <label class="warn-ack">
+      <input type="checkbox" id="${id}" data-flag="${escHtml(field.flag)}" data-kind="warn">
+      <span>I have explicit written authorisation to run this test</span>
+    </label>
+  `;
+  return div;
+}
+
+function buildInputField(field, attackName) {
+  const id = 'field-' + field.flag;
+  const div = document.createElement('div');
+  div.className = 'form-field';
+  if (field.kind === 'url' || field.kind === 'string') div.classList.add('full-width');
+
+  let inputHtml = '';
+  switch (field.kind) {
+    case 'select':
+      inputHtml = `<select id="${id}" data-flag="${escHtml(field.flag)}" data-kind="select">
+        ${(field.choices || []).map(c => {
+          const val = c.includes('=') ? c.split('=')[1] : c;
+          const lbl = c.includes('=') ? c.split('=')[0] : c;
+          const sel = val === field.default ? ' selected' : '';
+          return `<option value="${escHtml(val)}"${sel}>${escHtml(lbl)}</option>`;
+        }).join('')}
+      </select>`;
+      break;
+    case 'bool':
+      const trueSelected = field.default === 'true' ? ' selected' : '';
+      const falseSelected = field.default !== 'true' ? ' selected' : '';
+      inputHtml = `<select id="${id}" data-flag="${escHtml(field.flag)}" data-kind="bool">
+        <option value="true"${trueSelected}>true</option>
+        <option value="false"${falseSelected}>false</option>
+      </select>`;
+      break;
+    case 'int':
+    case 'float':
+      inputHtml = `<input type="number" id="${id}"
+        data-flag="${escHtml(field.flag)}" data-kind="${escHtml(field.kind)}"
+        value="${escHtml(field.default)}" placeholder="${escHtml(field.default)}">`;
+      break;
+    default: { // string, url
+      const defVal = field.default || (field.kind === 'url' ? (urlDefaults[attackName] || 'http://localhost:8080') : '');
+      inputHtml = `<input type="text" id="${id}"
+        data-flag="${escHtml(field.flag)}" data-kind="${escHtml(field.kind)}"
+        value="${escHtml(defVal)}" placeholder="${escHtml(field.kind === 'url' ? 'http://localhost:8080/...' : field.label)}">`;
+    }
+  }
+
+  div.innerHTML = `
+    <div class="field-label">${escHtml(field.label)}</div>
+    ${field.help && field.kind !== 'warn' ? `<div class="field-help">${escHtml(field.help)}</div>` : ''}
+    ${inputHtml}
+  `;
+  return div;
+}
+
+// collect form values → {flag: value} map, returns null if invalid
+function collectFlags() {
+  const flags = {};
+  const inputs = document.querySelectorAll('#form-grid [data-flag]');
+  for (const el of inputs) {
+    const flag = el.dataset.flag;
+    const kind = el.dataset.kind;
+    if (kind === 'warn') {
+      if (!el.checked) {
+        el.closest('.warn-box').style.borderColor = 'rgba(248,81,73,.7)';
+        showError('You must acknowledge the warning before running this attack.');
+        return null;
+      }
+      flags[flag] = 'true';
+    } else {
+      const val = el.value.trim();
+      if (!val && kind === 'url') {
+        el.style.borderColor = 'var(--red)';
+        showError('Target URL is required.');
+        return null;
+      }
+      el.style.borderColor = '';
+      if (val !== '') flags[flag] = val;
+    }
+  }
+  return flags;
+}
+
+// ─── run / cancel ────────────────────────────────────────────────────────
+async function runAttack() {
+  if (!selected || running) return;
+
+  const flags = collectFlags();
+  if (!flags) return;
+
+  // require url
+  if (!flags.url) {
+    const urlEl = document.querySelector('[data-kind="url"]');
+    if (urlEl) { urlEl.style.borderColor = 'var(--red)'; }
+    showError('Target URL is required.');
+    return;
+  }
+
+  clearResults();
+  setRunning(true);
+
+  const totalVal = parseInt(flags.total || '100', 10);
+  showProgress(totalVal);
+
+  abortCtrl = new AbortController();
+
+  try {
+    const res = await fetch('/api/run', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({attack: selected.name, flags}),
+      signal: abortCtrl.signal,
+    });
+
+    if (!res.ok) {
+      const txt = await res.text();
+      throw new Error(txt || res.statusText);
+    }
+
+    await streamSSE(res.body);
+  } catch (e) {
+    if (e.name !== 'AbortError') {
+      showError(e.message);
+    }
+  } finally {
+    setRunning(false);
+  }
+}
+
+function cancelRun() {
+  if (abortCtrl) abortCtrl.abort();
+}
+
+// ─── SSE streaming ───────────────────────────────────────────────────────
+async function streamSSE(body) {
+  const reader = body.getReader();
+  const decoder = new TextDecoder();
+  let buf = '';
+  let event = '';
+  let data = '';
+
+  while (true) {
+    const {done, value} = await reader.read();
+    if (done) break;
+    buf += decoder.decode(value, {stream: true});
+
+    const lines = buf.split('\n');
+    buf = lines.pop();
+
+    for (const line of lines) {
+      if (line.startsWith('event: ')) {
+        event = line.slice(7).trim();
+      } else if (line.startsWith('data: ')) {
+        data = line.slice(6).trim();
+      } else if (line === '') {
+        if (event && data) {
+          handleSSEEvent(event, data);
+          event = '';
+          data = '';
+        }
+      }
+    }
+  }
+}
+
+function handleSSEEvent(event, data) {
+  const payload = JSON.parse(data);
+  switch (event) {
+    case 'progress':
+      updateProgress(payload);
+      break;
+    case 'done':
+      finishProgress();
+      renderResult(payload);
+      break;
+    case 'error':
+      finishProgress();
+      showError(payload.message);
+      break;
+  }
+}
+
+// ─── progress UI ─────────────────────────────────────────────────────────
+function showProgress(total) {
+  const sec = document.getElementById('progress-section');
+  sec.classList.remove('hidden');
+  document.getElementById('prog-total').textContent = total;
+  document.getElementById('prog-sent').textContent = '0';
+  document.getElementById('prog-ok').textContent = '0';
+  document.getElementById('prog-rl').textContent = '0';
+  document.getElementById('prog-err').textContent = '0';
+  document.getElementById('prog-rps').textContent = '—';
+  document.getElementById('prog-elapsed').textContent = '—';
+  const bar = document.getElementById('progress-bar');
+  bar.style.width = '0%';
+  bar.classList.remove('done');
+}
+
+function updateProgress(p) {
+  document.getElementById('prog-sent').textContent = p.Sent || 0;
+  document.getElementById('prog-total').textContent = p.Total || '?';
+  document.getElementById('prog-ok').textContent = p.Success || 0;
+  document.getElementById('prog-rl').textContent = p.RateLimited || 0;
+  document.getElementById('prog-err').textContent = p.OtherErr || 0;
+  document.getElementById('prog-rps').textContent = p.RPS ? p.RPS.toFixed(1) : '—';
+  document.getElementById('prog-elapsed').textContent = p.Elapsed ? fmtNs(p.Elapsed) : '—';
+
+  const pct = p.Total > 0 ? Math.min(100, (p.Sent / p.Total) * 100) : 0;
+  document.getElementById('progress-bar').style.width = pct + '%';
+}
+
+function finishProgress() {
+  const bar = document.getElementById('progress-bar');
+  bar.style.width = '100%';
+  bar.classList.add('done');
+}
+
+// ─── result rendering ─────────────────────────────────────────────────────
+function renderResult(payload) {
+  const {type, report} = payload;
+
+  if (type === 'http') {
+    renderHTTPResult(report);
+  } else if (type === 'conn') {
+    renderConnResult(report);
+  }
+
+  document.getElementById('btn-clear').classList.remove('hidden');
+}
+
+function renderHTTPResult(r) {
+  const sec = document.getElementById('result-http');
+  sec.classList.remove('hidden');
+
+  // badge
+  const badge = document.getElementById('result-http-badge');
+  const vulnerable = r.too_many === 0 && r.success > 0;
+  badge.className = 'result-badge ' + (vulnerable ? 'fail' : 'pass');
+  badge.textContent = vulnerable ? 'vulnerable' : r.too_many > 0 ? 'rate-limited' : 'done';
+
+  // main stats
+  const grid = document.getElementById('result-http-grid');
+  grid.innerHTML = [
+    {label:'Sent',    value:r.sent,             cls:'blue'},
+    {label:'Success', value:r.success,           cls:'green'},
+    {label:'429',     value:r.too_many,          cls:'yellow'},
+    {label:'5xx',     value:r.server_err,        cls:'red'},
+    {label:'Errors',  value:r.other_err,         cls:'red'},
+    {label:'RPS',     value:r.rps?.toFixed(2),   cls:''},
+    {label:'Duration',value:fmtNs(r.duration_ns), cls:''},
+    {label:'Timeouts',value:r.timeouts,          cls:'red'},
+  ].map(s => `
+    <div class="result-stat">
+      <div class="result-stat-label">${s.label}</div>
+      <div class="result-stat-value ${s.cls}">${s.value ?? 0}</div>
+    </div>
+  `).join('');
+
+  // latency
+  const lat = r.latency || {};
+  document.getElementById('result-latency').innerHTML = ['p50','p90','p95','p99','max','mean'].map(k => `
+    <div class="latency-item">
+      <div class="latency-label">${k}</div>
+      <div class="latency-value">${fmtNs(lat[k])}</div>
+    </div>
+  `).join('');
+
+  // status distribution
+  const dist = r.status_counts || {};
+  const distEl = document.getElementById('result-status-dist');
+  if (Object.keys(dist).length === 0) {
+    distEl.innerHTML = '<span style="color:var(--text-muted);font-size:11px">no responses</span>';
+  } else {
+    distEl.innerHTML = Object.entries(dist)
+      .sort(([a],[b]) => parseInt(a) - parseInt(b))
+      .map(([code, count]) => {
+        const cls = code === '429' ? 'status-429'
+          : code[0] === '2' ? 'status-2xx'
+          : code[0] === '4' ? 'status-4xx'
+          : code[0] === '5' ? 'status-5xx' : 'status-other';
+        return `<div class="status-chip ${cls}">HTTP ${code}: ${count}</div>`;
+      }).join('');
+  }
+}
+
+function renderConnResult(r) {
+  const sec = document.getElementById('result-conn');
+  sec.classList.remove('hidden');
+
+  const badge = document.getElementById('result-conn-badge');
+  const vulnerable = r.DroppedByServer === 0 && r.Established > 0;
+  badge.className = 'result-badge ' + (vulnerable ? 'fail' : 'pass');
+  badge.textContent = vulnerable ? 'vulnerable' : 'protected';
+
+  document.getElementById('result-conn-grid').innerHTML = [
+    {label:'Attempted',         value:r.Attempted,                        cls:'blue'},
+    {label:'Established',       value:r.Established,                      cls:'green'},
+    {label:'Dropped by server', value:r.DroppedByServer,                  cls:'yellow'},
+    {label:'Dropped by client', value:r.DroppedClient,                    cls:''},
+    {label:'Avg hold',          value:fmtNs(r.AvgHold),                   cls:'purple'},
+    {label:'Max hold',          value:fmtNs(r.MaxHold),                   cls:'purple'},
+    {label:'Bytes sent',        value:fmtBytes(r.BytesSent),              cls:''},
+    {label:'Duration',          value:fmtNs(r.Duration),                  cls:''},
+  ].map(s => `
+    <div class="result-stat">
+      <div class="result-stat-label">${s.label}</div>
+      <div class="result-stat-value ${s.cls}">${s.value ?? 0}</div>
+    </div>
+  `).join('');
+}
+
+// ─── helpers ──────────────────────────────────────────────────────────────
+function showError(msg) {
+  const el = document.getElementById('result-error');
+  document.getElementById('result-error-msg').textContent = msg;
+  el.classList.remove('hidden');
+  document.getElementById('btn-clear').classList.remove('hidden');
+}
+
+function clearResults() {
+  ['result-http','result-conn','result-error','progress-section'].forEach(id => {
+    document.getElementById(id).classList.add('hidden');
+  });
+  document.getElementById('result-error-msg').textContent = '';
+  document.getElementById('btn-clear').classList.add('hidden');
+  // reset warn box borders
+  document.querySelectorAll('.warn-box').forEach(el => el.style.borderColor = '');
+  document.querySelectorAll('[data-kind="url"]').forEach(el => el.style.borderColor = '');
+}
+
+function setRunning(val) {
+  running = val;
+  const dot = document.getElementById('status-dot');
+  const txt = document.getElementById('status-text');
+  const btnRun = document.getElementById('btn-run');
+  const btnCancel = document.getElementById('btn-cancel');
+
+  if (val) {
+    dot.className = 'dot running';
+    txt.textContent = 'running ' + (selected?.name || '');
+    btnRun.disabled = true;
+    btnCancel.classList.remove('hidden');
+  } else {
+    dot.className = 'dot ready';
+    txt.textContent = 'idle';
+    btnRun.disabled = false;
+    btnCancel.classList.add('hidden');
+  }
+  // disable sidebar during run
+  document.querySelectorAll('.attack-item').forEach(el => {
+    el.style.pointerEvents = val ? 'none' : '';
+    el.style.opacity = val ? '.5' : '';
+  });
+  if (selected) {
+    const activeItem = document.getElementById('item-' + selected.name);
+    if (activeItem) { activeItem.style.opacity = ''; }
+  }
+}
+
+function fmtNs(ns) {
+  if (!ns) return '—';
+  const ms = ns / 1e6;
+  if (ms < 1) return (ns / 1e3).toFixed(1) + 'µs';
+  if (ms < 1000) return ms.toFixed(1) + 'ms';
+  return (ms / 1000).toFixed(2) + 's';
+}
+
+function fmtBytes(b) {
+  if (!b) return '0 B';
+  if (b < 1024) return b + ' B';
+  if (b < 1024*1024) return (b/1024).toFixed(1) + ' KB';
+  return (b/(1024*1024)).toFixed(2) + ' MB';
+}
+
+function escHtml(s) {
+  return String(s)
+    .replace(/&/g,'&amp;')
+    .replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;');
+}
+
+// ─── boot ─────────────────────────────────────────────────────────────────
+document.getElementById('status-dot').className = 'dot ready';
+init();
+</script>
+</body>
+</html>
