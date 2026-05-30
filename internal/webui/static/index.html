@@ -495,7 +495,18 @@ const i18n = {
     warnRequired: 'You must acknowledge the warning before running this attack.',
     descLabel: 'What is this attack?',
     synopses: {},
-    descriptions: {},
+    descriptions: {
+      flood:       'Sends a high volume of HTTP requests simultaneously, simulating many users hitting the server at once. The most basic rate limiting test: if the server never returns 429 (Too Many Requests), rate limiting is absent or too permissive. Use this as a starting point before any other attack.',
+      fuzz:        'Iterates over a wordlist of common paths (e.g. /admin, /api/users, /login) to discover hidden or unprotected routes. Optionally appends a random cache-busting parameter to every URL so CDN or reverse-proxy caches cannot mask the server\'s real behaviour.',
+      gzipbomb:    'Sends a tiny gzip-compressed body that expands to many megabytes when the server decompresses it. If the server has no decompression size limit, it may run out of memory and crash. Tests whether the server is protected against decompression-amplification attacks.',
+      h2flood:     'HTTP/2 allows many requests to share a single TCP connection via multiplexing. This attack opens few connections but fires hundreds of parallel streams on each one. Tests whether rate limiting operates per request (correct) or only per TCP connection (bypassable via multiplexing).',
+      headerbomb:  'Sends requests with hundreds of oversized junk headers and a body that grows larger with every request. Tests whether the server enforces MaxHeaderBytes and body size limits. A protected server responds with 413 (body too large) or 431 (headers too large) without processing the content.',
+      methodspray: 'Tests every combination of HTTP method × URL path from a wordlist. Some servers apply rate limiting only to GET, leaving POST or other verbs on the same route unprotected. Finds which method–path combinations bypass per-verb rate limits.',
+      replay:      'Loads real requests captured from a browser (HAR file) or plain text and replays them under load. Lets you test rate limiting with actual production traffic patterns instead of synthetic requests, reproducing the exact sequence of calls a real user or system makes.',
+      slowloris:   'Opens many TCP connections and keeps them alive by slowly dripping partial HTTP headers, never completing the request. Like calling someone and staying silent — the server waits, holding a connection slot indefinitely. Tests whether ReadHeaderTimeout is configured to close stalled connections.',
+      spoof:       'Rotates a fake IP in the X-Forwarded-For header on every request, cycling through a configured pool. If the server trusts this header for IP-based rate limiting without validating the origin, per-IP limits can be completely bypassed. Tests whether the server validates which proxies can declare the real client IP.',
+      wsflood:     'Opens and holds many WebSocket connections simultaneously. WebSockets are used in chats, dashboards, and real-time feeds — each open connection consumes server resources. Tests whether the server limits concurrent WebSocket connections per IP and closes excess connections before exhausting its capacity.',
+    },
     fieldLabel: {},
     fieldHelp: {},
     warnLabel: {},
@@ -748,7 +759,7 @@ function selectAttack(name) {
 function renderDescription(attack) {
   const box  = document.getElementById('description-box');
   const text = document.getElementById('description-text');
-  const desc = tDescription(attack.name, attack.description || '');
+  const desc = tDescription(attack.name, '');
   if (desc) {
     text.textContent = desc;
     box.classList.remove('hidden');
