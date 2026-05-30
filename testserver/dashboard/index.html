@@ -44,6 +44,28 @@
   }
   #status-dot.live { background: var(--green); box-shadow: 0 0 6px var(--green); }
 
+  .header-right {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .lang-toggle {
+    background: transparent;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    color: var(--muted);
+    cursor: pointer;
+    font-family: inherit;
+    font-size: 11px;
+    padding: 2px 8px;
+    transition: color .15s, border-color .15s;
+    display: flex;
+    align-items: center;
+    gap: 3px;
+  }
+  .lang-toggle:hover { border-color: var(--blue); color: var(--text); }
+  .lang-active { color: var(--blue); font-weight: 700; }
+
   .stat-grid {
     display: grid;
     grid-template-columns: repeat(4, 1fr);
@@ -154,45 +176,50 @@
 
 <header>
   <div>
-    <h1><span id="status-dot"></span>testserver dashboard</h1>
-    <div class="tag">limithit target · real-time metrics via SSE</div>
+    <h1><span id="status-dot"></span><span data-i18n="dashTitle">testserver dashboard</span></h1>
+    <div class="tag" data-i18n="dashTag">limithit target · real-time metrics via SSE</div>
   </div>
-  <div class="tag" id="port-label">localhost:8080</div>
+  <div class="header-right">
+    <button class="lang-toggle" id="lang-toggle" onclick="toggleLang()">
+      <span id="lang-en">EN</span> · <span id="lang-pt">PT</span>
+    </button>
+    <div class="tag" id="port-label">localhost:8080</div>
+  </div>
 </header>
 
 <div class="stat-grid">
   <div class="stat-card green">
-    <div class="label">GET requests</div>
+    <div class="label" data-i18n="labelGet">GET requests</div>
     <div class="value" id="stat-get">0</div>
     <div class="sub">GET /api/ping</div>
   </div>
   <div class="stat-card blue">
-    <div class="label">POST requests</div>
+    <div class="label" data-i18n="labelPost">POST requests</div>
     <div class="value" id="stat-post">0</div>
     <div class="sub">POST /api/echo</div>
   </div>
   <div class="stat-card yellow">
-    <div class="label">429 rate limited</div>
+    <div class="label" data-i18n="label429">429 rate limited</div>
     <div class="value" id="stat-429">0</div>
     <div class="sub" id="stat-429-pct">0% of total</div>
   </div>
   <div class="stat-card purple">
-    <div class="label">avg latency</div>
+    <div class="label" data-i18n="labelLatency">avg latency</div>
     <div class="value" id="stat-latency">0</div>
-    <div class="sub">ms per request</div>
+    <div class="sub" data-i18n="subLatency">ms per request</div>
   </div>
 </div>
 
 <div class="panel">
   <div class="panel-title">
-    req/s — last 60 seconds
+    <span data-i18n="rpsLabel">req/s — last 60 seconds</span>
     <span class="rps-badge" id="rps-badge">0 req/s</span>
   </div>
   <canvas id="sparkline-canvas"></canvas>
 </div>
 
 <div class="panel">
-  <div class="panel-title">latency distribution</div>
+  <div class="panel-title" data-i18n="latencyDist">latency distribution</div>
   <div id="hist-container">
     <div class="hist-row"><div class="hist-label">&lt;5ms</div><div class="hist-bar-wrap"><div class="hist-bar" id="hb0" style="width:0%"></div></div><div class="hist-pct" id="hp0">0%</div></div>
     <div class="hist-row"><div class="hist-label">5–10ms</div><div class="hist-bar-wrap"><div class="hist-bar" id="hb1" style="width:0%"></div></div><div class="hist-pct" id="hp1">0%</div></div>
@@ -205,29 +232,29 @@
 </div>
 
 <div class="panel">
-  <div class="panel-title">top offenders — per-IP 429 count (last 10)</div>
+  <div class="panel-title" data-i18n="topOffenders">top offenders — per-IP 429 count (last 10)</div>
   <table id="top-ips-table">
     <thead>
       <tr>
-        <th>ip</th>
-        <th style="text-align:right">429 denied</th>
+        <th data-i18n="thIp">ip</th>
+        <th style="text-align:right" data-i18n="thDenied">429 denied</th>
       </tr>
     </thead>
     <tbody id="top-ips-body"></tbody>
   </table>
-  <div id="top-ips-empty">no offenders yet — per-IP limiter has not denied any requests</div>
+  <div id="top-ips-empty" data-i18n="noOffenders">no offenders yet — per-IP limiter has not denied any requests</div>
 </div>
 
 <div class="panel">
-  <div class="panel-title">recent requests (last 20)</div>
+  <div class="panel-title" data-i18n="recentRequests">recent requests (last 20)</div>
   <table id="log-table">
     <thead>
       <tr>
-        <th>method</th>
-        <th>path</th>
-        <th>status</th>
-        <th>latency</th>
-        <th>time</th>
+        <th data-i18n="thMethod">method</th>
+        <th data-i18n="thPath">path</th>
+        <th data-i18n="thStatus">status</th>
+        <th data-i18n="thLatency">latency</th>
+        <th data-i18n="thTime">time</th>
       </tr>
     </thead>
     <tbody id="log-body"></tbody>
@@ -235,6 +262,79 @@
 </div>
 
 <script>
+  // ─── i18n ──────────────────────────────────────────────────────────────
+  const i18n = {
+    en: {
+      dashTitle: 'testserver dashboard',
+      dashTag: 'limithit target · real-time metrics via SSE',
+      labelGet: 'GET requests',
+      labelPost: 'POST requests',
+      label429: '429 rate limited',
+      labelLatency: 'avg latency',
+      subLatency: 'ms per request',
+      pctTotal: '% of total',
+      rpsLabel: 'req/s — last 60 seconds',
+      latencyDist: 'latency distribution',
+      topOffenders: 'top offenders — per-IP 429 count (last 10)',
+      thIp: 'ip',
+      thDenied: '429 denied',
+      noOffenders: 'no offenders yet — per-IP limiter has not denied any requests',
+      recentRequests: 'recent requests (last 20)',
+      thMethod: 'method',
+      thPath: 'path',
+      thStatus: 'status',
+      thLatency: 'latency',
+      thTime: 'time',
+    },
+    pt: {
+      dashTitle: 'painel testserver',
+      dashTag: 'alvo limithit · métricas em tempo real via SSE',
+      labelGet: 'requisições GET',
+      labelPost: 'requisições POST',
+      label429: '429 limitadas',
+      labelLatency: 'latência média',
+      subLatency: 'ms por requisição',
+      pctTotal: '% do total',
+      rpsLabel: 'req/s — últimos 60 segundos',
+      latencyDist: 'distribuição de latência',
+      topOffenders: 'maiores ofensores — 429 por IP (últimos 10)',
+      thIp: 'ip',
+      thDenied: '429 negados',
+      noOffenders: 'nenhum ofensor ainda — o limitador por IP não negou requisições',
+      recentRequests: 'requisições recentes (últimas 20)',
+      thMethod: 'método',
+      thPath: 'caminho',
+      thStatus: 'status',
+      thLatency: 'latência',
+      thTime: 'hora',
+    },
+  };
+
+  let lang = localStorage.getItem('limithit-lang') || 'en';
+
+  function t(key) { return (i18n[lang] || i18n.en)[key] ?? key; }
+
+  function applyLang() {
+    document.querySelectorAll('[data-i18n]').forEach(el => {
+      el.textContent = t(el.dataset.i18n);
+    });
+    document.getElementById('lang-en').className = lang === 'en' ? 'lang-active' : '';
+    document.getElementById('lang-pt').className = lang === 'pt' ? 'lang-active' : '';
+    document.documentElement.lang = lang === 'pt' ? 'pt-BR' : 'en';
+    // re-render dynamic pct label with correct suffix
+    const el = document.getElementById('stat-429-pct');
+    if (el && el.dataset.pct !== undefined) {
+      el.textContent = el.dataset.pct + t('pctTotal');
+    }
+  }
+
+  function toggleLang() {
+    lang = lang === 'en' ? 'pt' : 'en';
+    localStorage.setItem('limithit-lang', lang);
+    applyLang();
+  }
+
+  // ─── sparkline ──────────────────────────────────────────────────────────
   const dot = document.getElementById('status-dot');
   const canvas = document.getElementById('sparkline-canvas');
   const ctx = canvas.getContext('2d');
@@ -260,7 +360,6 @@
 
     ctx.clearRect(0, 0, w, h);
 
-    // grid lines
     ctx.strokeStyle = '#21262d';
     ctx.lineWidth = 1;
     for (let i = 1; i <= 3; i++) {
@@ -268,7 +367,6 @@
       ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(w, y); ctx.stroke();
     }
 
-    // gradient fill under line
     const gradient = ctx.createLinearGradient(0, 0, 0, h);
     gradient.addColorStop(0, 'rgba(88,166,255,0.35)');
     gradient.addColorStop(1, 'rgba(88,166,255,0.02)');
@@ -286,7 +384,6 @@
     ctx.fillStyle = gradient;
     ctx.fill();
 
-    // line
     ctx.beginPath();
     ctx.strokeStyle = '#58a6ff';
     ctx.lineWidth = 1.5;
@@ -298,7 +395,6 @@
     });
     ctx.stroke();
 
-    // max label
     ctx.fillStyle = '#7d8590';
     ctx.font = '10px monospace';
     ctx.fillText('max: ' + fmt(max), 4, 12);
@@ -324,14 +420,15 @@
     const pct = snap.total_requests > 0
       ? ((snap.total_429 / snap.total_requests) * 100).toFixed(1)
       : '0';
-    document.getElementById('stat-429-pct').textContent = pct + '% of total';
+    const pctEl = document.getElementById('stat-429-pct');
+    pctEl.dataset.pct = pct;
+    pctEl.textContent = pct + t('pctTotal');
 
     document.getElementById('rps-badge').textContent = snap.current_rps.toFixed(1) + ' req/s';
 
     timeline = snap.timeline;
     drawSparkline(timeline);
 
-    // histogram
     const total = snap.latency_buckets.reduce((a, b) => a + b, 0);
     const maxBucket = Math.max(...snap.latency_buckets, 1);
     snap.latency_buckets.forEach((v, i) => {
@@ -341,7 +438,6 @@
       document.getElementById('hp' + i).textContent = pctLabel + '%';
     });
 
-    // top offenders
     const tipsBody = document.getElementById('top-ips-body');
     const tipsEmpty = document.getElementById('top-ips-empty');
     tipsBody.innerHTML = '';
@@ -357,7 +453,6 @@
       });
     }
 
-    // recent log
     const tbody = document.getElementById('log-body');
     tbody.innerHTML = '';
     (snap.recent_log || []).forEach(entry => {
@@ -388,12 +483,11 @@
     };
   }
 
-  // init canvas size
   window.addEventListener('resize', () => drawSparkline(timeline));
   drawSparkline(timeline);
+  applyLang();
   connect();
 
-  // show port from current URL
   document.getElementById('port-label').textContent = location.host;
 </script>
 </body>

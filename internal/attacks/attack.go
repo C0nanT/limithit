@@ -27,7 +27,7 @@ type CommonOpts struct {
 // Base carries shared, pre-built dependencies injected into Attack.Run.
 type Base struct {
 	URL        string
-	Client     *http.Client         // nil for raw-socket attacks (e.g. slowloris)
+	Client     *http.Client // nil for raw-socket attacks (e.g. slowloris)
 	Common     CommonOpts
 	ProgressCh chan<- metrics.Progress // nil = disabled; caller closes after Run returns
 }
@@ -51,10 +51,10 @@ const (
 // Go's escape analysis heap-allocates them when their address is captured in
 // the returned slice.
 type FormField struct {
-	Flag     string             // flag name used to build CLI args (--<Flag> <Value>); "" = omit
-	Label    string             // human-readable title shown in the form
-	Help     string             // sub-label description
-	Default  string             // pre-fills the form field
+	Flag     string // flag name used to build CLI args (--<Flag> <Value>); "" = omit
+	Label    string // human-readable title shown in the form
+	Help     string // sub-label description
+	Default  string // pre-fills the form field
 	Kind     FieldKind
 	Choices  []string           // "Label=value" or bare "value"; required for FieldSelect
 	Value    *string            // filled by the generic form builder after the form runs

@@ -262,4 +262,3 @@ func flagsToArgs(flags map[string]string) []string {
 	}
 	return args
 }
-

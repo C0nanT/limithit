@@ -96,6 +96,23 @@
 
   @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
 
+  .lang-toggle {
+    background: transparent;
+    border: 1px solid var(--border-mid);
+    border-radius: 4px;
+    color: var(--text-muted);
+    cursor: pointer;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    padding: 2px 8px;
+    transition: color .15s, border-color .15s;
+    display: flex;
+    align-items: center;
+    gap: 3px;
+  }
+  .lang-toggle:hover { border-color: var(--accent); color: var(--text); }
+  .lang-active { color: var(--accent); font-weight: 700; }
+
   /* ─── sidebar ────────────────────────────────── */
   .sidebar {
     background: var(--bg-sidebar);
@@ -513,6 +530,9 @@
     <div class="header-logo">⚡ limithit <span>/ admin</span></div>
     <div class="header-badge">local</div>
     <div class="header-spacer"></div>
+    <button class="lang-toggle" id="lang-toggle" onclick="toggleLang()">
+      <span id="lang-en">EN</span> · <span id="lang-pt">PT</span>
+    </button>
     <div class="header-status">
       <div class="dot" id="status-dot"></div>
       <span id="status-text">idle</span>
@@ -521,9 +541,9 @@
 
   <!-- sidebar -->
   <aside class="sidebar">
-    <div class="sidebar-title">Attacks</div>
+    <div class="sidebar-title" data-i18n="attacks">Attacks</div>
     <div class="attack-list" id="attack-list">
-      <div style="padding:16px;color:var(--text-muted);font-size:11px;">loading…</div>
+      <div style="padding:16px;color:var(--text-muted);font-size:11px;" data-i18n="loading">loading…</div>
     </div>
   </aside>
 
@@ -531,7 +551,7 @@
   <main class="main" id="main">
     <div class="empty-state" id="empty-state">
       <div class="icon">⚡</div>
-      <p>Select an attack from the sidebar</p>
+      <p data-i18n="selectAttack">Select an attack from the sidebar</p>
     </div>
 
     <div class="attack-panel hidden" id="attack-panel">
@@ -547,49 +567,49 @@
         <!-- actions -->
         <div class="actions">
           <button class="btn btn-run" id="btn-run" onclick="runAttack()">
-            ▶ Run Attack
+            <span data-i18n="btnRun">▶ Run Attack</span>
           </button>
           <button class="btn btn-cancel hidden" id="btn-cancel" onclick="cancelRun()">
-            ✕ Cancel
+            <span data-i18n="btnCancel">✕ Cancel</span>
           </button>
           <button class="btn btn-clear hidden" id="btn-clear" onclick="clearResults()">
-            Clear
+            <span data-i18n="btnClear">Clear</span>
           </button>
         </div>
 
         <!-- progress -->
         <div class="progress-section hidden" id="progress-section">
-          <div class="section-title">Progress</div>
+          <div class="section-title" data-i18n="progress">Progress</div>
           <div class="progress-bar-wrap">
             <div class="progress-bar-fill" id="progress-bar" style="width:0%"></div>
           </div>
           <div class="progress-stats">
             <div class="stat">
-              <div class="stat-label">Sent</div>
+              <div class="stat-label" data-i18n="statSent">Sent</div>
               <div class="stat-value blue" id="prog-sent">0</div>
             </div>
             <div class="stat">
-              <div class="stat-label">Total</div>
+              <div class="stat-label" data-i18n="statTotal">Total</div>
               <div class="stat-value" id="prog-total">0</div>
             </div>
             <div class="stat">
-              <div class="stat-label">Success</div>
+              <div class="stat-label" data-i18n="statSuccess">Success</div>
               <div class="stat-value green" id="prog-ok">0</div>
             </div>
             <div class="stat">
-              <div class="stat-label">Rate-limited</div>
+              <div class="stat-label" data-i18n="statRateLimited">Rate-limited</div>
               <div class="stat-value yellow" id="prog-rl">0</div>
             </div>
             <div class="stat">
-              <div class="stat-label">Errors</div>
+              <div class="stat-label" data-i18n="statErrors">Errors</div>
               <div class="stat-value red" id="prog-err">0</div>
             </div>
             <div class="stat">
-              <div class="stat-label">RPS</div>
+              <div class="stat-label" data-i18n="statRPS">RPS</div>
               <div class="stat-value" id="prog-rps">—</div>
             </div>
             <div class="stat">
-              <div class="stat-label">Elapsed</div>
+              <div class="stat-label" data-i18n="statElapsed">Elapsed</div>
               <div class="stat-value" id="prog-elapsed">—</div>
             </div>
           </div>
@@ -598,16 +618,16 @@
         <!-- result: http -->
         <div class="result-section hidden" id="result-http">
           <div class="result-header">
-            <div class="section-title">Result</div>
+            <div class="section-title" data-i18n="result">Result</div>
             <div class="result-badge" id="result-http-badge">pass</div>
           </div>
           <div class="result-grid" id="result-http-grid"></div>
           <div>
-            <div class="section-title" style="margin-bottom:8px">Latency</div>
+            <div class="section-title" style="margin-bottom:8px" data-i18n="latency">Latency</div>
             <div class="latency-row" id="result-latency"></div>
           </div>
           <div>
-            <div class="section-title" style="margin-bottom:8px">Status distribution</div>
+            <div class="section-title" style="margin-bottom:8px" data-i18n="statusDist">Status distribution</div>
             <div class="status-dist" id="result-status-dist"></div>
           </div>
         </div>
@@ -615,7 +635,7 @@
         <!-- result: conn (slowloris / wsflood) -->
         <div class="result-section hidden" id="result-conn">
           <div class="result-header">
-            <div class="section-title">Result</div>
+            <div class="section-title" data-i18n="result">Result</div>
             <div class="result-badge" id="result-conn-badge">pass</div>
           </div>
           <div class="conn-grid" id="result-conn-grid"></div>
@@ -633,10 +653,99 @@
 </div>
 
 <script>
+// ─── i18n ────────────────────────────────────────────────────────────────
+const i18n = {
+  en: {
+    attacks: 'Attacks',
+    selectAttack: 'Select an attack from the sidebar',
+    btnRun: '▶ Run Attack',
+    btnCancel: '✕ Cancel',
+    btnClear: 'Clear',
+    progress: 'Progress',
+    statSent: 'Sent',
+    statTotal: 'Total',
+    statSuccess: 'Success',
+    statRateLimited: 'Rate-limited',
+    statErrors: 'Errors',
+    statRPS: 'RPS',
+    statElapsed: 'Elapsed',
+    result: 'Result',
+    latency: 'Latency',
+    statusDist: 'Status distribution',
+    vulnerable: 'vulnerable',
+    rateLimited: 'rate-limited',
+    done: 'done',
+    protected: 'protected',
+    idle: 'idle',
+    running: 'running',
+    noResponses: 'no responses',
+    httpStatLabels: ['Sent','Success','429','5xx','Errors','RPS','Duration','Timeouts'],
+    connStatLabels: ['Attempted','Established','Dropped by server','Dropped by client','Avg hold','Max hold','Bytes sent','Duration'],
+    warnAck: 'I have explicit written authorisation to run this test',
+    loading: 'loading…',
+    loadError: 'Failed to load attacks: ',
+    urlRequired: 'Target URL is required.',
+    warnRequired: 'You must acknowledge the warning before running this attack.',
+  },
+  pt: {
+    attacks: 'Ataques',
+    selectAttack: 'Selecione um ataque no menu lateral',
+    btnRun: '▶ Executar Ataque',
+    btnCancel: '✕ Cancelar',
+    btnClear: 'Limpar',
+    progress: 'Progresso',
+    statSent: 'Enviados',
+    statTotal: 'Total',
+    statSuccess: 'Sucesso',
+    statRateLimited: 'Limitados',
+    statErrors: 'Erros',
+    statRPS: 'RPS',
+    statElapsed: 'Decorrido',
+    result: 'Resultado',
+    latency: 'Latência',
+    statusDist: 'Distribuição de status',
+    vulnerable: 'vulnerável',
+    rateLimited: 'limitado',
+    done: 'concluído',
+    protected: 'protegido',
+    idle: 'ocioso',
+    running: 'executando',
+    noResponses: 'sem respostas',
+    httpStatLabels: ['Enviados','Sucesso','429','5xx','Erros','RPS','Duração','Timeouts'],
+    connStatLabels: ['Tentativas','Estabelecidas','Descartadas pelo servidor','Descartadas pelo cliente','Tempo médio','Tempo máximo','Bytes enviados','Duração'],
+    warnAck: 'Tenho autorização expressa e por escrito para executar este teste',
+    loading: 'carregando…',
+    loadError: 'Falha ao carregar ataques: ',
+    urlRequired: 'URL alvo é obrigatória.',
+    warnRequired: 'Você deve confirmar o aviso antes de executar este ataque.',
+  },
+};
+
+let lang = localStorage.getItem('limithit-lang') || 'en';
+
+function t(key) { return (i18n[lang] || i18n.en)[key] ?? key; }
+
+function applyLang() {
+  document.querySelectorAll('[data-i18n]').forEach(el => {
+    el.textContent = t(el.dataset.i18n);
+  });
+  document.getElementById('lang-en').className = lang === 'en' ? 'lang-active' : '';
+  document.getElementById('lang-pt').className = lang === 'pt' ? 'lang-active' : '';
+  document.documentElement.lang = lang === 'pt' ? 'pt-BR' : 'en';
+  // re-render form to update warn-ack text
+  if (selected) renderForm(selected);
+}
+
+function toggleLang() {
+  lang = lang === 'en' ? 'pt' : 'en';
+  localStorage.setItem('limithit-lang', lang);
+  applyLang();
+}
+
 // ─── state ──────────────────────────────────────────────────────────────
 let allAttacks = [];
-let selected = null;       // current attack metadata
-let abortCtrl = null;      // fetch abort controller
+let selected = null;
+let abortCtrl = null;
 let running = false;
 
 const urlDefaults = {
@@ -654,13 +763,14 @@ const urlDefaults = {
 
 // ─── init ────────────────────────────────────────────────────────────────
 async function init() {
+  applyLang();
   try {
     const res = await fetch('/api/attacks');
     allAttacks = await res.json();
     renderSidebar();
   } catch (e) {
     document.getElementById('attack-list').innerHTML =
-      `<div style="padding:16px;color:var(--red);font-size:11px;">Failed to load attacks: ${e.message}</div>`;
+      `<div style="padding:16px;color:var(--red);font-size:11px;">${t('loadError')}${e.message}</div>`;
   }
 }
 
@@ -716,7 +826,7 @@ function buildWarnField(field) {
     <div class="warn-body">${escHtml(field.help || '')}</div>
     <label class="warn-ack">
       <input type="checkbox" id="${id}" data-flag="${escHtml(field.flag)}" data-kind="warn">
-      <span>I have explicit written authorisation to run this test</span>
+      <span>${t('warnAck')}</span>
     </label>
   `;
   return div;
@@ -754,7 +864,7 @@ function buildInputField(field, attackName) {
         data-flag="${escHtml(field.flag)}" data-kind="${escHtml(field.kind)}"
         value="${escHtml(field.default)}" placeholder="${escHtml(field.default)}">`;
       break;
-    default: { // string, url
+    default: {
       const defVal = field.default || (field.kind === 'url' ? (urlDefaults[attackName] || 'http://localhost:8080') : '');
       inputHtml = `<input type="text" id="${id}"
         data-flag="${escHtml(field.flag)}" data-kind="${escHtml(field.kind)}"
@@ -770,7 +880,6 @@ function buildInputField(field, attackName) {
   return div;
 }
 
-// collect form values → {flag: value} map, returns null if invalid
 function collectFlags() {
   const flags = {};
   const inputs = document.querySelectorAll('#form-grid [data-flag]');
@@ -780,7 +889,7 @@ function collectFlags() {
     if (kind === 'warn') {
       if (!el.checked) {
         el.closest('.warn-box').style.borderColor = 'rgba(248,81,73,.7)';
-        showError('You must acknowledge the warning before running this attack.');
+        showError(t('warnRequired'));
         return null;
       }
       flags[flag] = 'true';
@@ -788,7 +897,7 @@ function collectFlags() {
       const val = el.value.trim();
       if (!val && kind === 'url') {
         el.style.borderColor = 'var(--red)';
-        showError('Target URL is required.');
+        showError(t('urlRequired'));
         return null;
       }
       el.style.borderColor = '';
@@ -805,11 +914,10 @@ async function runAttack() {
   const flags = collectFlags();
   if (!flags) return;
 
-  // require url
   if (!flags.url) {
     const urlEl = document.querySelector('[data-kind="url"]');
     if (urlEl) { urlEl.style.borderColor = 'var(--red)'; }
-    showError('Target URL is required.');
+    showError(t('urlRequired'));
     return;
   }
 
@@ -949,23 +1057,22 @@ function renderHTTPResult(r) {
   const sec = document.getElementById('result-http');
   sec.classList.remove('hidden');
 
-  // badge
   const badge = document.getElementById('result-http-badge');
   const vulnerable = r.too_many === 0 && r.success > 0;
   badge.className = 'result-badge ' + (vulnerable ? 'fail' : 'pass');
-  badge.textContent = vulnerable ? 'vulnerable' : r.too_many > 0 ? 'rate-limited' : 'done';
+  badge.textContent = vulnerable ? t('vulnerable') : r.too_many > 0 ? t('rateLimited') : t('done');
 
-  // main stats
+  const lbls = t('httpStatLabels');
   const grid = document.getElementById('result-http-grid');
   grid.innerHTML = [
-    {label:'Sent',    value:r.sent,             cls:'blue'},
-    {label:'Success', value:r.success,           cls:'green'},
-    {label:'429',     value:r.too_many,          cls:'yellow'},
-    {label:'5xx',     value:r.server_err,        cls:'red'},
-    {label:'Errors',  value:r.other_err,         cls:'red'},
-    {label:'RPS',     value:r.rps?.toFixed(2),   cls:''},
-    {label:'Duration',value:fmtNs(r.duration_ns), cls:''},
-    {label:'Timeouts',value:r.timeouts,          cls:'red'},
+    {label: lbls[0], value: r.sent,              cls: 'blue'},
+    {label: lbls[1], value: r.success,            cls: 'green'},
+    {label: lbls[2], value: r.too_many,           cls: 'yellow'},
+    {label: lbls[3], value: r.server_err,         cls: 'red'},
+    {label: lbls[4], value: r.other_err,          cls: 'red'},
+    {label: lbls[5], value: r.rps?.toFixed(2),    cls: ''},
+    {label: lbls[6], value: fmtNs(r.duration_ns), cls: ''},
+    {label: lbls[7], value: r.timeouts,           cls: 'red'},
   ].map(s => `
     <div class="result-stat">
       <div class="result-stat-label">${s.label}</div>
@@ -973,7 +1080,6 @@ function renderHTTPResult(r) {
     </div>
   `).join('');
 
-  // latency
   const lat = r.latency || {};
   document.getElementById('result-latency').innerHTML = ['p50','p90','p95','p99','max','mean'].map(k => `
     <div class="latency-item">
@@ -982,11 +1088,10 @@ function renderHTTPResult(r) {
     </div>
   `).join('');
 
-  // status distribution
   const dist = r.status_counts || {};
   const distEl = document.getElementById('result-status-dist');
   if (Object.keys(dist).length === 0) {
-    distEl.innerHTML = '<span style="color:var(--text-muted);font-size:11px">no responses</span>';
+    distEl.innerHTML = `<span style="color:var(--text-muted);font-size:11px">${t('noResponses')}</span>`;
   } else {
     distEl.innerHTML = Object.entries(dist)
       .sort(([a],[b]) => parseInt(a) - parseInt(b))
@@ -1007,17 +1112,18 @@ function renderConnResult(r) {
   const badge = document.getElementById('result-conn-badge');
   const vulnerable = r.DroppedByServer === 0 && r.Established > 0;
   badge.className = 'result-badge ' + (vulnerable ? 'fail' : 'pass');
-  badge.textContent = vulnerable ? 'vulnerable' : 'protected';
+  badge.textContent = vulnerable ? t('vulnerable') : t('protected');
 
+  const lbls = t('connStatLabels');
   document.getElementById('result-conn-grid').innerHTML = [
-    {label:'Attempted',         value:r.Attempted,                        cls:'blue'},
-    {label:'Established',       value:r.Established,                      cls:'green'},
-    {label:'Dropped by server', value:r.DroppedByServer,                  cls:'yellow'},
-    {label:'Dropped by client', value:r.DroppedClient,                    cls:''},
-    {label:'Avg hold',          value:fmtNs(r.AvgHold),                   cls:'purple'},
-    {label:'Max hold',          value:fmtNs(r.MaxHold),                   cls:'purple'},
-    {label:'Bytes sent',        value:fmtBytes(r.BytesSent),              cls:''},
-    {label:'Duration',          value:fmtNs(r.Duration),                  cls:''},
+    {label: lbls[0], value: r.Attempted,          cls: 'blue'},
+    {label: lbls[1], value: r.Established,         cls: 'green'},
+    {label: lbls[2], value: r.DroppedByServer,     cls: 'yellow'},
+    {label: lbls[3], value: r.DroppedClient,       cls: ''},
+    {label: lbls[4], value: fmtNs(r.AvgHold),     cls: 'purple'},
+    {label: lbls[5], value: fmtNs(r.MaxHold),     cls: 'purple'},
+    {label: lbls[6], value: fmtBytes(r.BytesSent), cls: ''},
+    {label: lbls[7], value: fmtNs(r.Duration),    cls: ''},
   ].map(s => `
     <div class="result-stat">
       <div class="result-stat-label">${s.label}</div>
@@ -1040,7 +1146,6 @@ function clearResults() {
   });
   document.getElementById('result-error-msg').textContent = '';
   document.getElementById('btn-clear').classList.add('hidden');
-  // reset warn box borders
   document.querySelectorAll('.warn-box').forEach(el => el.style.borderColor = '');
   document.querySelectorAll('[data-kind="url"]').forEach(el => el.style.borderColor = '');
 }
@@ -1054,16 +1159,15 @@ function setRunning(val) {
 
   if (val) {
     dot.className = 'dot running';
-    txt.textContent = 'running ' + (selected?.name || '');
+    txt.textContent = t('running') + ' ' + (selected?.name || '');
     btnRun.disabled = true;
     btnCancel.classList.remove('hidden');
   } else {
     dot.className = 'dot ready';
-    txt.textContent = 'idle';
+    txt.textContent = t('idle');
     btnRun.disabled = false;
     btnCancel.classList.add('hidden');
   }
-  // disable sidebar during run
   document.querySelectorAll('.attack-item').forEach(el => {
     el.style.pointerEvents = val ? 'none' : '';
     el.style.opacity = val ? '.5' : '';
