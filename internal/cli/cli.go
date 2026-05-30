@@ -14,7 +14,7 @@ import (
 	"time"
 
 	"github.com/conantorreswf/limithit/internal/attacks"
-	_ "github.com/conantorreswf/limithit/internal/attacks/all"
+	_ "github.com/conantorreswf/limithit/internal/attacks/all" // register all attack implementations
 	"github.com/conantorreswf/limithit/internal/client"
 	"github.com/conantorreswf/limithit/internal/config"
 	"github.com/conantorreswf/limithit/internal/metrics"
@@ -401,7 +401,7 @@ func writeAuditLog(path, attackName, target string, cfg *outputConfig, start tim
 	_ = json.NewEncoder(f).Encode(rec)
 }
 
-func printLiveProgress(ch <-chan metrics.Progress, total int, w io.Writer) {
+func printLiveProgress(ch <-chan metrics.Progress, _ int, w io.Writer) {
 	for p := range ch {
 		pct := 0.0
 		if p.Total > 0 {
