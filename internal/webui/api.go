@@ -19,9 +19,10 @@ import (
 
 // attackMeta is the JSON shape returned by GET /api/attacks.
 type attackMeta struct {
-	Name     string      `json:"name"`
-	Synopsis string      `json:"synopsis"`
-	Fields   []fieldMeta `json:"fields"`
+	Name        string      `json:"name"`
+	Synopsis    string      `json:"synopsis"`
+	Description string      `json:"description"`
+	Fields      []fieldMeta `json:"fields"`
 }
 
 type fieldMeta struct {
@@ -55,9 +56,10 @@ func handleAttacks(w http.ResponseWriter, r *http.Request) {
 	out := make([]attackMeta, 0, len(all))
 	for _, a := range all {
 		out = append(out, attackMeta{
-			Name:     a.Name(),
-			Synopsis: a.Synopsis(),
-			Fields:   toFieldMeta(a.FormFields()),
+			Name:        a.Name(),
+			Synopsis:    a.Synopsis(),
+			Description: a.Description(),
+			Fields:      toFieldMeta(a.FormFields()),
 		})
 	}
 

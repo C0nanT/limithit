@@ -308,6 +308,29 @@
   }
 
   .hidden { display: none !important; }
+
+  .description-box {
+    background: rgba(88,166,255,.05);
+    border: 1px solid rgba(88,166,255,.18);
+    border-left: 3px solid var(--accent);
+    border-radius: var(--radius);
+    padding: 10px 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+  }
+  .description-label {
+    font-size: 9px;
+    font-weight: 600;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: var(--accent);
+  }
+  .description-text {
+    font-size: 12px;
+    color: var(--text);
+    line-height: 1.7;
+  }
 </style>
 </head>
 <body>
@@ -346,6 +369,11 @@
       </div>
 
       <div class="panel-body">
+        <div class="description-box hidden" id="description-box">
+          <div class="description-label" data-i18n="descLabel">What is this attack?</div>
+          <div class="description-text" id="description-text"></div>
+        </div>
+
         <div class="form-grid" id="form-grid"></div>
 
         <div class="actions">
@@ -465,7 +493,9 @@ const i18n = {
     loadError: 'Failed to load attacks: ',
     urlRequired: 'Target URL is required.',
     warnRequired: 'You must acknowledge the warning before running this attack.',
+    descLabel: 'What is this attack?',
     synopses: {},
+    descriptions: {},
     fieldLabel: {},
     fieldHelp: {},
     warnLabel: {},
@@ -497,11 +527,25 @@ const i18n = {
     noResponses: 'sem respostas',
     httpStatLabels: ['Enviados','Sucesso','429','5xx','Erros','RPS','Duração','Timeouts'],
     connStatLabels: ['Tentativas','Estabelecidas','Descartadas pelo servidor','Descartadas pelo cliente','Tempo médio','Tempo máximo','Bytes enviados','Duração'],
+    descLabel: 'O que é este ataque?',
     warnAck: 'Tenho autorização expressa e por escrito para executar este teste',
     loading: 'carregando…',
     loadError: 'Falha ao carregar ataques: ',
     urlRequired: 'URL alvo é obrigatória.',
     warnRequired: 'Você deve confirmar o aviso antes de executar este ataque.',
+
+    descriptions: {
+      flood:       'Envia um grande volume de requisições HTTP ao mesmo tempo, verificando se o servidor aplica rate limiting. Se não aparecerem respostas 429 após milhares de requisições, o limite de taxa está ausente ou muito permissivo. Use este ataque como ponto de partida antes de qualquer outro.',
+      fuzz:        'Percorre uma lista de caminhos comuns (ex: /admin, /api/users, /login) para descobrir rotas ocultas ou desprotegidas no servidor. Opcionalmente adiciona um parâmetro aleatório a cada URL para evitar que o cache de CDNs mascare o comportamento real do servidor.',
+      gzipbomb:    'Envia um corpo gzip minúsculo que expande para muitos megabytes quando descomprimido pelo servidor. Se o servidor não tiver limite de tamanho de descompressão, pode esgotar a memória e travar. Testa se o servidor está protegido contra ataques de amplificação por descompressão.',
+      h2flood:     'O HTTP/2 permite múltiplas requisições numa única conexão TCP via multiplexing. Este ataque abre poucas conexões mas dispara centenas de streams paralelos em cada uma. Testa se o rate limiting opera por requisição (correto) ou apenas por conexão TCP (bypassável via multiplexing).',
+      headerbomb:  'Envia requisições com centenas de cabeçalhos gigantes e um corpo que cresce progressivamente a cada envio. Testa se o servidor rejeita requisições malformadas antes de processá-las. Um servidor protegido responde com 413 (corpo grande demais) ou 431 (cabeçalhos grandes demais) rapidamente.',
+      methodspray: 'Testa todas as combinações de método HTTP × caminho da wordlist. Alguns servidores aplicam rate limiting apenas ao GET, esquecendo de proteger POST ou outros verbos no mesmo endpoint. Descobre quais combinações de método–rota escapam do rate limiting.',
+      replay:      'Carrega requisições reais capturadas de um navegador (arquivo HAR) ou arquivo de texto e as reenvia sob carga. Permite testar o rate limiting com padrões de tráfego real em vez de sintético, reproduzindo a sequência exata de chamadas de um usuário ou sistema real.',
+      slowloris:   'Abre muitas conexões TCP e as mantém vivas enviando fragmentos de cabeçalhos lentamente, sem nunca completar a requisição. Como ligar para alguém e ficar em silêncio — o servidor aguarda e ocupa um slot indefinidamente. Testa se o ReadHeaderTimeout está configurado para fechar conexões lentas.',
+      spoof:       'Rotaciona um IP falso no cabeçalho X-Forwarded-For a cada requisição, ciclando por um pool configurado. Se o servidor confiar nesse cabeçalho para rate limiting por IP sem validar a origem, o limite pode ser completamente burlado. Testa se o servidor valida quais proxies podem declarar o IP real do cliente.',
+      wsflood:     'Abre e mantém muitas conexões WebSocket abertas ao mesmo tempo. WebSockets são usados em chats, dashboards e feeds em tempo real — cada conexão aberta consome recursos do servidor. Testa se o servidor limita conexões WebSocket por IP e fecha conexões excessivas antes de esgotar sua capacidade.',
+    },
 
     synopses: {
       flood:       'flood de requisições de alta vazão (sonda de carga/rate-limit)',
@@ -612,6 +656,9 @@ function tWarnLabel(attackName, fallback) {
 function tWarnHelp(attackName, fallback) {
   return i18n[lang]?.warnHelp?.[attackName] || fallback;
 }
+function tDescription(attackName, fallback) {
+  return i18n[lang]?.descriptions?.[attackName] || fallback;
+}
 
 function applyLang() {
   document.querySelectorAll('[data-i18n]').forEach(el => {
@@ -622,6 +669,7 @@ function applyLang() {
   document.documentElement.lang = lang === 'pt' ? 'pt-BR' : 'en';
   if (selected) {
     document.getElementById('panel-synopsis').textContent = tSynopsis(selected.name, selected.synopsis);
+    renderDescription(selected);
     renderForm(selected);
   }
   renderSidebar();
@@ -691,8 +739,22 @@ function selectAttack(name) {
   document.getElementById('panel-title').textContent = name;
   document.getElementById('panel-synopsis').textContent = tSynopsis(name, selected.synopsis);
 
+  renderDescription(selected);
   renderForm(selected);
   clearResults();
+}
+
+// ─── description box ─────────────────────────────────────────────────────
+function renderDescription(attack) {
+  const box  = document.getElementById('description-box');
+  const text = document.getElementById('description-text');
+  const desc = tDescription(attack.name, attack.description || '');
+  if (desc) {
+    text.textContent = desc;
+    box.classList.remove('hidden');
+  } else {
+    box.classList.add('hidden');
+  }
 }
 
 // ─── form builder ────────────────────────────────────────────────────────
