@@ -260,10 +260,19 @@ func dispatchInteractiveTUI(ctx context.Context, a attacks.Attack, args []string
 	doneCh := make(chan doneResult, 1)
 
 	go func() {
-		base, _, code := buildAttackBase(a, args, io.Discard)
+		var parseBuf bytes.Buffer
+		base, _, code := buildAttackBase(a, args, &parseBuf)
 		if code != 0 {
 			close(progressCh)
-			doneCh <- doneResult{err: fmt.Errorf("arg parse failed (exit %d)", code)}
+			logPath := writeInteractiveLog(a.Name(), args, parseBuf.String())
+			msg := parseBuf.String()
+			if msg == "" {
+				msg = fmt.Sprintf("arg parse failed (exit %d)", code)
+			}
+			if logPath != "" {
+				msg = strings.TrimRight(msg, "\n") + "\n\n(details in " + logPath + ")"
+			}
+			doneCh <- doneResult{err: fmt.Errorf("%s", strings.TrimSpace(msg))}
 			return
 		}
 		base.ProgressCh = progressCh
@@ -293,4 +302,19 @@ func dispatchInteractiveTUI(ctx context.Context, a attacks.Attack, args []string
 		return dispatchInteractiveTUI(ctx, fresh, args, stdout, stderr)
 	}
 	return 0
+}
+
+// writeInteractiveLog writes a debug log for interactive TUI arg-parse failures.
+// Returns the log file path, or "" if writing failed.
+func writeInteractiveLog(attackName string, args []string, captured string) string {
+	path := fmt.Sprintf("limithit-tui-%s-%d.log", attackName, time.Now().Unix())
+	f, err := os.Create(path)
+	if err != nil {
+		return ""
+	}
+	defer f.Close()
+	fmt.Fprintf(f, "attack: %s\n", attackName)
+	fmt.Fprintf(f, "args: %q\n", args)
+	fmt.Fprintf(f, "\nstderr output:\n%s\n", captured)
+	return path
 }

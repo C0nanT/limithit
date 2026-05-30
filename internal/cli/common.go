@@ -73,7 +73,12 @@ func extractURLArg(args []string) (string, []string) {
 	for i, a := range args {
 		if strings.HasPrefix(a, "http://") || strings.HasPrefix(a, "https://") {
 			rest := make([]string, 0, len(args)-1)
-			rest = append(rest, args[:i]...)
+			if i > 0 && args[i-1] == "--url" {
+				// Strip --url flag name too so flag.Parse doesn't consume the next token as its value.
+				rest = append(rest, args[:i-1]...)
+			} else {
+				rest = append(rest, args[:i]...)
+			}
 			rest = append(rest, args[i+1:]...)
 			return a, rest
 		}
