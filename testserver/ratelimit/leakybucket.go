@@ -20,11 +20,11 @@ type leakyBucketLimiter struct {
 }
 
 func newLeakyBucketLimiter(rate, burst float64) Limiter {
-	cap := int(math.Max(1, burst))
+	bucketCap := int(math.Max(1, burst))
 	return &leakyBucketLimiter{
 		entries:  make(map[string]*leakyEntry),
 		rate:     rate,
-		capacity: cap,
+		capacity: bucketCap,
 	}
 }
 

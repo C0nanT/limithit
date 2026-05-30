@@ -26,13 +26,13 @@ type AuthHandler struct {
 	mu       sync.Mutex
 	attempts map[string]*authAttempt
 
-	username        string
-	password        string
-	maxFails        int
-	failWindow      time.Duration
-	lockoutWindow   time.Duration
-	trustedProxies  []netip.Prefix
-	DisableLockout  bool
+	username       string
+	password       string
+	maxFails       int
+	failWindow     time.Duration
+	lockoutWindow  time.Duration
+	trustedProxies []netip.Prefix
+	DisableLockout bool
 }
 
 func NewAuthHandler(user, pass string, trusted []netip.Prefix) *AuthHandler {
@@ -125,7 +125,7 @@ func writeJSON(w http.ResponseWriter, status int, body any) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
 	enc, _ := json.Marshal(body)
-	w.Write(enc)
+	_, _ = w.Write(enc)
 }
 
 func retryAfterSeconds(until time.Time) string {

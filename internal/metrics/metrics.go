@@ -159,26 +159,26 @@ func (c *Collector) RecordPath(path string, r client.Result) {
 }
 
 type Report struct {
-	Tag             string            `json:"tag,omitempty"`
-	Attack          string            `json:"attack,omitempty"`
-	Target          string            `json:"target,omitempty"`
-	StartedAt       time.Time         `json:"started_at,omitempty"`
-	Sent            int               `json:"sent"`
-	Success         int               `json:"success"`
-	ClientErr       int               `json:"client_err"`
-	ServerErr       int               `json:"server_err"`
-	TooMany         int               `json:"too_many"`
-	HeaderTooLarge  int               `json:"header_too_large"`
-	PayloadTooLarge int               `json:"payload_too_large"`
-	Timeouts        int               `json:"timeouts"`
-	OtherErr        int               `json:"other_err"`
-	BytesSent       int64             `json:"bytes_sent"`
-	StatusCounts    map[int]int       `json:"status_counts"`
+	Tag             string                 `json:"tag,omitempty"`
+	Attack          string                 `json:"attack,omitempty"`
+	Target          string                 `json:"target,omitempty"`
+	StartedAt       time.Time              `json:"started_at,omitempty"`
+	Sent            int                    `json:"sent"`
+	Success         int                    `json:"success"`
+	ClientErr       int                    `json:"client_err"`
+	ServerErr       int                    `json:"server_err"`
+	TooMany         int                    `json:"too_many"`
+	HeaderTooLarge  int                    `json:"header_too_large"`
+	PayloadTooLarge int                    `json:"payload_too_large"`
+	Timeouts        int                    `json:"timeouts"`
+	OtherErr        int                    `json:"other_err"`
+	BytesSent       int64                  `json:"bytes_sent"`
+	StatusCounts    map[int]int            `json:"status_counts"`
 	PathStatus      map[string]map[int]int `json:"path_status,omitempty"`
-	Duration        time.Duration     `json:"duration_ns"`
-	RPS             float64           `json:"rps"`
-	Latency         LatencyStats      `json:"latency"`
-	PerSecond       []Bucket          `json:"per_second,omitempty"`
+	Duration        time.Duration          `json:"duration_ns"`
+	RPS             float64                `json:"rps"`
+	Latency         LatencyStats           `json:"latency"`
+	PerSecond       []Bucket               `json:"per_second,omitempty"`
 }
 
 func computeLatency(latencies []time.Duration) LatencyStats {
@@ -193,7 +193,7 @@ func computeLatency(latencies []time.Duration) LatencyStats {
 		if len(sorted) == 1 {
 			return sorted[0]
 		}
-		idx := int(p / 100.0 * float64(len(sorted)-1) + 0.5)
+		idx := int(p/100.0*float64(len(sorted)-1) + 0.5)
 		if idx >= len(sorted) {
 			idx = len(sorted) - 1
 		}

@@ -7,7 +7,7 @@ import (
 )
 
 var wsUpgrader = websocket.Upgrader{
-	CheckOrigin: func(r *http.Request) bool { return true },
+	CheckOrigin: func(_ *http.Request) bool { return true },
 }
 
 // NewWsEchoHandler returns a WebSocket echo handler. maxConns limits concurrent

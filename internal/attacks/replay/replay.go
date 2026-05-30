@@ -21,9 +21,9 @@ func init() {
 }
 
 type Replay struct {
-	file   string
-	loop   bool
-	reqs   []savedReq
+	file string
+	loop bool
+	reqs []savedReq
 }
 
 type savedReq struct {
@@ -31,8 +31,10 @@ type savedReq struct {
 	URL    string
 }
 
-func (r *Replay) Name() string     { return "replay" }
-func (r *Replay) Synopsis() string { return "replay captured requests from a HAR or line-delimited file" }
+func (r *Replay) Name() string { return "replay" }
+func (r *Replay) Synopsis() string {
+	return "replay captured requests from a HAR or line-delimited file"
+}
 
 func (r *Replay) Flags(fs *flag.FlagSet) {
 	fs.StringVar(&r.file, "file", "", "HAR file or newline-delimited \"METHOD URL\" file (required)")

@@ -11,7 +11,7 @@ import (
 	"time"
 
 	"github.com/conantorreswf/limithit/internal/attacks"
-	_ "github.com/conantorreswf/limithit/internal/attacks/all"
+	_ "github.com/conantorreswf/limithit/internal/attacks/all" // register all attacks
 	"github.com/conantorreswf/limithit/internal/client"
 	"github.com/conantorreswf/limithit/internal/config"
 	"github.com/conantorreswf/limithit/internal/metrics"
@@ -190,10 +190,10 @@ func outputFmt(cfg *config.Config) string {
 	return "table"
 }
 
-func printSummary(w io.Writer, results []Result, fmt_ string) {
+func printSummary(w io.Writer, results []Result, fmtStr string) {
 	fmt.Fprintln(w, "\n=== scenario summary ===")
 
-	if fmt_ == "json" {
+	if fmtStr == "json" {
 		printSummaryJSON(w, results)
 		return
 	}
@@ -251,6 +251,6 @@ func printSummaryJSON(w io.Writer, results []Result) {
 
 func newJSONEncoder(w io.Writer) func(interface{}) {
 	return func(v interface{}) {
-		report.JSONAny(w, v)
+		_ = report.JSONAny(w, v)
 	}
 }

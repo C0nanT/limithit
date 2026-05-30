@@ -136,7 +136,7 @@ func main() {
 	s.SetConfig(store.ServerConfig{
 		Algo:       *algo,
 		MaxConns:   *maxConns,
-		MaxStreams:  *maxStreams,
+		MaxStreams: *maxStreams,
 		Vulnerable: *vulnerableStr,
 	})
 
@@ -184,8 +184,8 @@ func main() {
 		Addr:    fmt.Sprintf(":%d", *port),
 		Handler: httpHandler,
 
-		ReadTimeout:  10 * time.Second,
-		IdleTimeout:  30 * time.Second,
+		ReadTimeout: 10 * time.Second,
+		IdleTimeout: 30 * time.Second,
 		// WriteTimeout must be 0 so SSE streams stay open
 	}
 
@@ -221,5 +221,5 @@ func main() {
 	log.Println("shutting down...")
 	shutCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
-	srv.Shutdown(shutCtx)
+	_ = srv.Shutdown(shutCtx)
 }

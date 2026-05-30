@@ -103,4 +103,3 @@ func (h *H2Flood) Run(ctx context.Context, base attacks.Base) (attacks.Report, e
 		Target:      base.URL,
 	}), nil
 }
-

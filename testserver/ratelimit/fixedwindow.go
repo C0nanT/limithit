@@ -18,7 +18,7 @@ type fixedWindowLimiter struct {
 	window  time.Duration
 }
 
-func newFixedWindowLimiter(rate, burst float64) Limiter {
+func newFixedWindowLimiter(_ float64, burst float64) Limiter {
 	limit := int(math.Max(1, burst))
 	return &fixedWindowLimiter{
 		entries: make(map[string]*fixedWindowEntry),

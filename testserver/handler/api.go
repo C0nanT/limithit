@@ -34,7 +34,7 @@ func PingHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
-	w.Write([]byte(`{"pong":true}`))
+	_, _ = w.Write([]byte(`{"pong":true}`))
 }
 
 func EchoHandler(w http.ResponseWriter, r *http.Request) {
@@ -47,7 +47,7 @@ func EchoHandler(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusBadRequest)
-		w.Write([]byte(`{"error":"failed to read body"}`))
+		_, _ = w.Write([]byte(`{"error":"failed to read body"}`))
 		return
 	}
 
@@ -55,9 +55,9 @@ func EchoHandler(w http.ResponseWriter, r *http.Request) {
 	var v any
 	w.Header().Set("Content-Type", "application/json")
 	if json.Unmarshal(body, &v) == nil {
-		w.Write(body)
+		_, _ = w.Write(body)
 	} else {
 		resp, _ := json.Marshal(map[string]string{"echo": string(body)})
-		w.Write(resp)
+		_, _ = w.Write(resp)
 	}
 }

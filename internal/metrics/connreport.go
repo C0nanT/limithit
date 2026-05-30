@@ -68,11 +68,11 @@ func (c *ConnCollector) Finalize(dur time.Duration) *ConnReport {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
-	var sum, max time.Duration
+	var sum, maxDur time.Duration
 	for _, d := range c.holdDurations {
 		sum += d
-		if d > max {
-			max = d
+		if d > maxDur {
+			maxDur = d
 		}
 	}
 	var avg time.Duration
@@ -91,7 +91,7 @@ func (c *ConnCollector) Finalize(dur time.Duration) *ConnReport {
 		DroppedByServer: c.droppedByServer,
 		DroppedClient:   c.droppedClient,
 		AvgHold:         avg,
-		MaxHold:         max,
+		MaxHold:         maxDur,
 		BytesSent:       c.bytesSent,
 		Errors:          errs,
 		Duration:        dur,

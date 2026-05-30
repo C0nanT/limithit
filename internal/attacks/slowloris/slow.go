@@ -193,13 +193,12 @@ func holdOne(ctx context.Context, _ int, host, path string, u *url.URL, opts opt
 			var probe [1]byte
 			if _, rerr := conn.Read(probe[:]); rerr != nil {
 				var ne net.Error
-				if errors.As(rerr, &ne) && ne.Timeout() {
-					// expected — server hasn't responded yet
-				} else {
+				if !errors.As(rerr, &ne) || !ne.Timeout() {
 					cc.DroppedByServer(time.Since(openedAt))
 					cc.Error("drip-eof:" + classifyErr(rerr))
 					return
 				}
+				// timeout expected — server hasn't responded yet
 			} else {
 				cc.DroppedByServer(time.Since(openedAt))
 				cc.Error("drip-resp")

@@ -58,7 +58,7 @@ func TestClientIPNoTrustList(t *testing.T) {
 func TestMiddlewareReturns429(t *testing.T) {
 	reg := NewRegistry(1, 1)
 	defer reg.Close()
-	h := Middleware(reg, []netip.Prefix{}, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	h := Middleware(reg, []netip.Prefix{}, http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	}))
 
@@ -88,7 +88,7 @@ func TestMiddlewareReturns429(t *testing.T) {
 func TestMiddlewareRateLimitHeaders(t *testing.T) {
 	reg := NewRegistry(10, 10)
 	defer reg.Close()
-	h := Middleware(reg, []netip.Prefix{}, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	h := Middleware(reg, []netip.Prefix{}, http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	}))
 

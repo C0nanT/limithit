@@ -494,12 +494,12 @@ func interactiveWSFlood(ctx context.Context, stdout, stderr io.Writer) int {
 
 func interactiveGzipBomb(ctx context.Context, stdout, stderr io.Writer) int {
 	var (
-		url        = ""
-		expandedMB = "10"
-		total      = "10"
+		url         = ""
+		expandedMB  = "10"
+		total       = "10"
 		concurrency = "5"
-		method     = "POST"
-		confirmed  = false
+		method      = "POST"
+		confirmed   = false
 	)
 	shared := defaultSharedOpts()
 

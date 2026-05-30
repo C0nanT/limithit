@@ -232,7 +232,7 @@ func Middleware(lim Limiter, trustedCIDRs []netip.Prefix, next http.Handler) htt
 	if lim == nil {
 		return next
 	}
-	cap := lim.Capacity()
+	limCap := lim.Capacity()
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		ip := ClientIP(r, trustedCIDRs)
 		ok, remaining, reset := lim.Allow(ip)
@@ -242,17 +242,17 @@ func Middleware(lim Limiter, trustedCIDRs []netip.Prefix, next http.Handler) htt
 			if secs < 1 {
 				secs = 1
 			}
-			w.Header().Set("RateLimit-Limit", fmt.Sprintf("%d", cap))
+			w.Header().Set("RateLimit-Limit", fmt.Sprintf("%d", limCap))
 			w.Header().Set("RateLimit-Remaining", "0")
 			w.Header().Set("RateLimit-Reset", resetUnix)
 			w.Header().Set("Retry-After", fmt.Sprintf("%d", secs))
 			w.Header().Set("Content-Type", "application/json")
 			w.Header().Set("X-RateLimit-Key", ip)
 			w.WriteHeader(http.StatusTooManyRequests)
-			w.Write([]byte(`{"error":"rate limit exceeded"}`))
+			_, _ = w.Write([]byte(`{"error":"rate limit exceeded"}`))
 			return
 		}
-		w.Header().Set("RateLimit-Limit", fmt.Sprintf("%d", cap))
+		w.Header().Set("RateLimit-Limit", fmt.Sprintf("%d", limCap))
 		w.Header().Set("RateLimit-Remaining", fmt.Sprintf("%d", remaining))
 		w.Header().Set("RateLimit-Reset", resetUnix)
 		next.ServeHTTP(w, r)

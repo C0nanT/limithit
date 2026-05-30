@@ -69,18 +69,11 @@ func TestRampPacerMonotonicRate(t *testing.T) {
 		t.Fatalf("err: %v", err)
 	}
 
-	var prev time.Duration = -1
-	samples := 10
-	for i := 0; i < samples; i++ {
+	for range 10 {
 		d := p.Next()
 		if d < 0 {
 			t.Fatalf("negative delay: %v", d)
 		}
-		if prev >= 0 && d > prev {
-			// Allow small jitter from timing, but delay should trend down.
-			// We check the overall trend: first sample vs last.
-		}
-		prev = d
 		time.Sleep(10 * time.Millisecond)
 	}
 	// First delay (at 1 RPS) ≈ 1s; last (near 100 RPS) ≈ 10ms.

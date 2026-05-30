@@ -43,18 +43,6 @@ func (h *HeaderFlag) Set(s string) error {
 	return nil
 }
 
-var allowedMethods = map[string]struct{}{
-	"GET": {}, "POST": {}, "PUT": {}, "PATCH": {}, "DELETE": {}, "HEAD": {}, "OPTIONS": {},
-}
-
-func validateMethod(m string) (string, error) {
-	m = strings.ToUpper(m)
-	if _, ok := allowedMethods[m]; !ok {
-		return "", fmt.Errorf("invalid method %q", m)
-	}
-	return m, nil
-}
-
 func validateURL(raw string) error {
 	if raw == "" {
 		return errors.New("url is required")

@@ -11,7 +11,7 @@ import (
 	"time"
 
 	"github.com/conantorreswf/limithit/internal/attacks"
-	_ "github.com/conantorreswf/limithit/internal/attacks/all"
+	_ "github.com/conantorreswf/limithit/internal/attacks/all" // register all attacks
 	"github.com/conantorreswf/limithit/internal/client"
 	"github.com/conantorreswf/limithit/internal/config"
 	"github.com/conantorreswf/limithit/internal/metrics"

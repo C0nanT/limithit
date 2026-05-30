@@ -224,8 +224,8 @@ func wsPingFrame() []byte {
 	mask := make([]byte, 4)
 	_, _ = rand.Read(mask)
 	return []byte{
-		0x89,        // FIN=1, opcode=9 (ping)
-		0x80,        // MASK=1, payload len=0
+		0x89, // FIN=1, opcode=9 (ping)
+		0x80, // MASK=1, payload len=0
 		mask[0], mask[1], mask[2], mask[3],
 	}
 }

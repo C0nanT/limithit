@@ -1,0 +1,21 @@
+run:
+  timeout: 5m
+
+linters:
+  disable-all: true
+  enable:
+    - govet
+    - errcheck
+    - staticcheck
+    - gosimple
+    - ineffassign
+    - unused
+    - gofmt
+    - revive
+
+issues:
+  exclude-rules:
+    # SA1019 deprecation warnings for h2c package — fixing requires Go 1.24+
+    # http.Server.Protocols field; tracked as future work.
+    - linters: [staticcheck]
+      text: "SA1019"

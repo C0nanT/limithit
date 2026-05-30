@@ -19,7 +19,7 @@ type slidingWindowLimiter struct {
 	window  time.Duration
 }
 
-func newSlidingWindowLimiter(rate, burst float64) Limiter {
+func newSlidingWindowLimiter(_ float64, burst float64) Limiter {
 	limit := int(math.Max(1, burst))
 	return &slidingWindowLimiter{
 		entries: make(map[string]*slidingWindowEntry),

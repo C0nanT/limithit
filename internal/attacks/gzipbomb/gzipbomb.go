@@ -18,10 +18,10 @@ func init() {
 }
 
 type GzipBomb struct {
-	expandedMB   int
-	iUnderstand  bool
-	method       string
-	payload      []byte
+	expandedMB  int
+	iUnderstand bool
+	method      string
+	payload     []byte
 }
 
 func (g *GzipBomb) Name() string     { return "gzipbomb" }
