@@ -1,7 +1,10 @@
+VERSION  ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo "dev")
+LDFLAGS  := -ldflags "-X github.com/conantorreswf/limithit/internal/version.Version=$(VERSION)"
+
 .PHONY: build build-server fmt vet test test-all ci clean run-server run-server-spoof
 
 build:
-	go build -o limithit .
+	go build $(LDFLAGS) -o limithit .
 
 build-server:
 	cd testserver && go build ./...

@@ -38,7 +38,7 @@ type integrationConfig struct {
 // attackCases maps attack name → per-attack test overrides.
 // Attacks not listed use plain httptest with no extra flags.
 var attackCases = map[string]integrationConfig{
-	"gzipbomb":   {extraArgs: []string{"--i-understand", "--expanded-mb", "1"}},
+	"gzipbomb":   {extraArgs: []string{"--expanded-mb", "1"}},
 	"h2flood":    {extraArgs: []string{"--insecure", "--connections", "1", "--streams", "3"}, mkServer: tlsH2Server},
 	"headerbomb": {extraArgs: []string{"--header-count", "3", "--header-size", "32", "--body-start", "64", "--body-max", "256"}},
 	"slowloris":  {extraArgs: []string{"--connections", "2", "--hold", "1", "--header-interval", "2"}},

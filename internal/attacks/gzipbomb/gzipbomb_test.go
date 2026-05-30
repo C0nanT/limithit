@@ -40,17 +40,17 @@ func TestBombDecompressesCorrectly(t *testing.T) {
 	}
 }
 
-func TestValidateSafetyGate(t *testing.T) {
-	g := &GzipBomb{expandedMB: 1, iUnderstand: false}
-	if err := g.Validate(); err == nil {
-		t.Fatal("expected error without --i-understand")
+func TestValidatePass(t *testing.T) {
+	g := &GzipBomb{expandedMB: 1}
+	if err := g.Validate(); err != nil {
+		t.Fatalf("unexpected error: %v", err)
 	}
 }
 
-func TestValidatePass(t *testing.T) {
-	g := &GzipBomb{expandedMB: 1, iUnderstand: true}
-	if err := g.Validate(); err != nil {
-		t.Fatalf("unexpected error: %v", err)
+func TestValidateZeroMB(t *testing.T) {
+	g := &GzipBomb{expandedMB: 0}
+	if err := g.Validate(); err == nil {
+		t.Fatal("expected error for expandedMB=0")
 	}
 }
 

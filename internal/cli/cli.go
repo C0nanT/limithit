@@ -2,22 +2,26 @@ package cli
 
 import (
 	"context"
+	"encoding/json"
 	"flag"
 	"fmt"
 	"io"
 	"os"
 	"os/signal"
+	"strings"
 	"sync"
 	"syscall"
 	"time"
 
 	"github.com/conantorreswf/limithit/internal/attacks"
-	_ "github.com/conantorreswf/limithit/internal/attacks/all" // register all attacks
+	_ "github.com/conantorreswf/limithit/internal/attacks/all"
 	"github.com/conantorreswf/limithit/internal/client"
 	"github.com/conantorreswf/limithit/internal/config"
 	"github.com/conantorreswf/limithit/internal/metrics"
 	"github.com/conantorreswf/limithit/internal/report"
+	"github.com/conantorreswf/limithit/internal/safety"
 	"github.com/conantorreswf/limithit/internal/scenario"
+	"github.com/conantorreswf/limithit/internal/version"
 )
 
 func Run(args []string, stdout, stderr io.Writer) int {
@@ -33,6 +37,9 @@ func Run(args []string, stdout, stderr io.Writer) int {
 	switch cmd {
 	case "-h", "--help", "help":
 		printRoot(stdout)
+		return 0
+	case "--version", "-v", "version":
+		fmt.Fprintf(stdout, "limithit %s\n", version.Version)
 		return 0
 	case "init":
 		return runInit(rest, stdout, stderr)
@@ -50,9 +57,8 @@ func Run(args []string, stdout, stderr io.Writer) int {
 }
 
 func printRoot(w io.Writer) {
-	fmt.Fprintln(w, `limithit — HTTP attack-simulation toolkit
-
-Usage:
+	fmt.Fprintf(w, "limithit %s — HTTP attack-simulation toolkit\n\n", version.Version)
+	fmt.Fprintln(w, `Usage:
   limithit <command> [flags] <url>
   limithit run <scenario.yaml> [--continue-on-fail]
   limithit init [config.yaml]`)
@@ -93,7 +99,6 @@ func runScenario(ctx context.Context, args []string, stdout, stderr io.Writer) i
 	fs := flag.NewFlagSet("run", flag.ContinueOnError)
 	fs.SetOutput(stderr)
 	continueOnFail := fs.Bool("continue-on-fail", false, "continue to next step on assertion failure")
-
 	if err := fs.Parse(args); err != nil {
 		return 2
 	}
@@ -101,22 +106,18 @@ func runScenario(ctx context.Context, args []string, stdout, stderr io.Writer) i
 		fmt.Fprintln(stderr, "usage: limithit run <scenario.yaml> [--continue-on-fail]")
 		return 2
 	}
-
 	cfg, err := config.Load(fs.Arg(0))
 	if err != nil {
 		fmt.Fprintf(stderr, "error: %s\n", err)
 		return 2
 	}
-
 	if err := scenario.Validate(cfg); err != nil {
 		fmt.Fprintf(stderr, "error: %s\n", err)
 		return 2
 	}
-
 	return scenario.Run(ctx, cfg, stdout, stderr, *continueOnFail)
 }
 
-// outputConfig holds the rendering/output flags parsed by buildAttackBase.
 type outputConfig struct {
 	fmt          string
 	file         string
@@ -128,13 +129,12 @@ type outputConfig struct {
 	quiet        bool
 	noColor      bool
 	total        int
+	auditLog     string
+	safetyOpts   safety.Opts
 }
 
-// buildAttackBase parses the common + attack-specific flags from args, populates
-// the attack struct via a.Flags + fs.Parse, and returns an attacks.Base ready for
-// a.Run(). It does not set ProgressCh — the caller sets that after inspecting outCfg.
-//
-// Returns (base, outCfg, 0) on success or (zero, nil, non-zero) on parse/validation error.
+// buildAttackBase parses flags, runs the safety guard, and returns an attacks.Base.
+// ProgressCh is not set here — the caller sets it based on outCfg.live.
 func buildAttackBase(a attacks.Attack, args []string, stderr io.Writer) (attacks.Base, *outputConfig, int) {
 	fs := flag.NewFlagSet(a.Name(), flag.ContinueOnError)
 	fs.SetOutput(stderr)
@@ -144,18 +144,22 @@ func buildAttackBase(a attacks.Attack, args []string, stderr io.Writer) (attacks
 		total        = fs.Int("total", 100, "total requests")
 		concurrency  = fs.Int("concurrency", 10, "worker count")
 		timeoutSec   = fs.Int("timeout", 10, "per-request timeout seconds")
-		keepalive    = fs.Bool("keepalive", true, "enable HTTP keep-alive (false = new TCP/TLS per request)")
-		expectStatus = fs.Int("expect-status", 0, "assert this HTTP status code appears ≥1 time; exit 1 if not")
+		keepalive    = fs.Bool("keepalive", true, "enable HTTP keep-alive")
+		expectStatus = fs.Int("expect-status", 0, "assert HTTP status code appears ≥1 time; exit 1 if not")
 		rampStart    = fs.Float64("ramp-start", 0, "start RPS for linear ramp (0 = disabled)")
-		rampDur      = fs.String("ramp-duration", "30s", "duration to ramp from --ramp-start to full rate")
+		rampDur      = fs.String("ramp-duration", "30s", "ramp duration")
 		outputFmt    = fs.String("output", "table", "output format: table|json|csv")
 		outputFile   = fs.String("output-file", "", "write output to this file path")
 		compareTo    = fs.String("compare", "", "path to baseline JSON; exits non-zero on regression")
-		cmpP99       = fs.Float64("compare-p99-threshold", 10.0, "p99 latency % increase that flags a regression")
-		cmp429       = fs.Float64("compare-429-threshold", 10.0, "429 ratio % decrease that flags a regression")
+		cmpP99       = fs.Float64("compare-p99-threshold", 10.0, "p99 latency % increase regression threshold")
+		cmp429       = fs.Float64("compare-429-threshold", 10.0, "429 ratio % decrease regression threshold")
 		live         = fs.Bool("live", false, "print live progress to stderr during run")
-		quiet        = fs.Bool("quiet", false, "suppress progress and informational output; report goes to stdout")
+		quiet        = fs.Bool("quiet", false, "suppress informational output; report goes to stdout")
 		noColor      = fs.Bool("no-color", false, "disable ANSI colour in output")
+		iUnderstand  = fs.Bool("i-understand", false, "affirm authorisation for destructive/amplifying attacks")
+		maxRPS       = fs.Float64("max-rps", 0, "global RPS cap via poisson pacer (0 = uncapped)")
+		allowTarget  = fs.String("allow-target", "", `suppress non-loopback warning (host or "*")`)
+		auditLog     = fs.String("audit-log", "", "path to JSONL audit log (appended per run)")
 		hdr          HeaderFlag
 	)
 	fs.Var(&hdr, "header", `custom header "Key: Value" (repeatable)`)
@@ -198,6 +202,28 @@ func buildAttackBase(a attacks.Attack, args []string, stderr io.Writer) (attacks
 			return attacks.Base{}, nil, 2
 		}
 		pacer = p
+	} else if *maxRPS > 0 {
+		p, err := metrics.NewPacer("poisson", 0, 0, *maxRPS)
+		if err != nil {
+			fmt.Fprintf(stderr, "error: invalid --max-rps: %s\n", err)
+			return attacks.Base{}, nil, 2
+		}
+		pacer = p
+	}
+
+	var allowTargets []string
+	if *allowTarget != "" {
+		allowTargets = strings.Split(*allowTarget, ",")
+	}
+
+	sopts := safety.Opts{
+		IUnderstand:  *iUnderstand,
+		AllowTargets: allowTargets,
+		MaxRPS:       *maxRPS,
+	}
+	if err := safety.Confirm(a.Name(), *urlFlag, sopts, stderr); err != nil {
+		fmt.Fprintf(stderr, "error: %s\n", err)
+		return attacks.Base{}, nil, 1
 	}
 
 	base := attacks.Base{
@@ -226,6 +252,8 @@ func buildAttackBase(a attacks.Attack, args []string, stderr io.Writer) (attacks
 		quiet:        *quiet,
 		noColor:      *noColor,
 		total:        *total,
+		auditLog:     *auditLog,
+		safetyOpts:   sopts,
 	}
 
 	return base, outCfg, 0
@@ -237,7 +265,6 @@ func runAttack(ctx context.Context, a attacks.Attack, args []string, stdout, std
 		return code
 	}
 
-	// --live: create a progress channel and start a stderr printer goroutine.
 	var liveWG sync.WaitGroup
 	if outCfg.live && !outCfg.quiet {
 		progressCh := make(chan metrics.Progress, 4)
@@ -249,13 +276,15 @@ func runAttack(ctx context.Context, a attacks.Attack, args []string, stdout, std
 		}()
 	}
 
+	start := time.Now()
 	rep, err := a.Run(ctx, base)
 
-	// Close progress channel so the live printer goroutine exits.
 	if base.ProgressCh != nil {
 		close(base.ProgressCh)
 		liveWG.Wait()
 	}
+
+	writeAuditLog(outCfg.auditLog, a.Name(), base.URL, outCfg, start, err)
 
 	if err != nil {
 		fmt.Fprintf(stderr, "error: %s\n", err)
@@ -265,7 +294,6 @@ func runAttack(ctx context.Context, a attacks.Attack, args []string, stdout, std
 		maybeInterrupted(ctx, stderr)
 	}
 
-	// resolve output writer
 	outW := stdout
 	if outCfg.file != "" {
 		f, ferr := os.Create(outCfg.file)
@@ -277,7 +305,6 @@ func runAttack(ctx context.Context, a attacks.Attack, args []string, stdout, std
 		outW = f
 	}
 
-	// render
 	if r, ok := rep.(*metrics.Report); ok {
 		switch outCfg.fmt {
 		case "json":
@@ -297,7 +324,6 @@ func runAttack(ctx context.Context, a attacks.Attack, args []string, stdout, std
 		fmt.Fprint(outW, rep.String())
 	}
 
-	// --expect-status
 	if outCfg.expectStatus != 0 {
 		if r, ok := rep.(*metrics.Report); ok {
 			if r.StatusCounts[outCfg.expectStatus] == 0 {
@@ -307,7 +333,6 @@ func runAttack(ctx context.Context, a attacks.Attack, args []string, stdout, std
 		}
 	}
 
-	// --compare
 	if outCfg.compareTo != "" {
 		r, ok := rep.(*metrics.Report)
 		if !ok {
@@ -336,8 +361,39 @@ func runAttack(ctx context.Context, a attacks.Attack, args []string, stdout, std
 	return 0
 }
 
-// printLiveProgress reads from ch and prints one-line progress updates to w
-// until the channel is closed. Progress goes to stderr so stdout stays pipe-clean.
+type auditRecord struct {
+	Timestamp string  `json:"timestamp"`
+	Version   string  `json:"version"`
+	Attack    string  `json:"attack"`
+	Target    string  `json:"target"`
+	Total     int     `json:"total"`
+	MaxRPS    float64 `json:"max_rps,omitempty"`
+	Error     string  `json:"error,omitempty"`
+}
+
+func writeAuditLog(path, attackName, target string, cfg *outputConfig, start time.Time, runErr error) {
+	if path == "" {
+		return
+	}
+	rec := auditRecord{
+		Timestamp: start.UTC().Format(time.RFC3339),
+		Version:   version.Version,
+		Attack:    attackName,
+		Target:    target,
+		Total:     cfg.total,
+		MaxRPS:    cfg.safetyOpts.MaxRPS,
+	}
+	if runErr != nil {
+		rec.Error = runErr.Error()
+	}
+	f, err := os.OpenFile(path, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	if err != nil {
+		return
+	}
+	defer f.Close()
+	_ = json.NewEncoder(f).Encode(rec)
+}
+
 func printLiveProgress(ch <-chan metrics.Progress, total int, w io.Writer) {
 	for p := range ch {
 		pct := 0.0

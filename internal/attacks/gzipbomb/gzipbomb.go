@@ -18,10 +18,9 @@ func init() {
 }
 
 type GzipBomb struct {
-	expandedMB  int
-	iUnderstand bool
-	method      string
-	payload     []byte
+	expandedMB int
+	method     string
+	payload    []byte
 }
 
 func (g *GzipBomb) Name() string     { return "gzipbomb" }
@@ -30,7 +29,6 @@ func (g *GzipBomb) Synopsis() string { return "decompression amplification via C
 func (g *GzipBomb) Flags(fs *flag.FlagSet) {
 	fs.IntVar(&g.expandedMB, "expanded-mb", 10, "size of the expanded body in MB that the server must decompress")
 	fs.StringVar(&g.method, "method", "POST", "HTTP method")
-	fs.BoolVar(&g.iUnderstand, "i-understand", false, "required safety acknowledgement to run this attack")
 }
 
 func (g *GzipBomb) FormFields() []attacks.FormField {
@@ -58,9 +56,6 @@ func (g *GzipBomb) FormFields() []attacks.FormField {
 }
 
 func (g *GzipBomb) Validate() error {
-	if !g.iUnderstand {
-		return errors.New("gzipbomb requires --i-understand flag: this attack may crash or OOM a server that decompresses the body")
-	}
 	if g.expandedMB < 1 {
 		return errors.New("expanded-mb must be >= 1")
 	}

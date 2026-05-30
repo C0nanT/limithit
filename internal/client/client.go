@@ -6,6 +6,8 @@ import (
 	"net"
 	"net/http"
 	"time"
+
+	"github.com/conantorreswf/limithit/internal/version"
 )
 
 type Config struct {
@@ -15,6 +17,7 @@ type Config struct {
 	Headers           http.Header
 	Timeout           time.Duration
 	DisableKeepAlives bool
+	UserAgent         string // overrides "limithit/<version>" when non-empty
 }
 
 type Result struct {
@@ -24,8 +27,23 @@ type Result struct {
 	Duration time.Duration
 }
 
-// New returns an *http.Client whose Transport is tuned for the given
-// concurrency level. The returned client honors cfg.Timeout per request.
+// uaTransport injects a User-Agent header if the request has none set.
+type uaTransport struct {
+	next http.RoundTripper
+	ua   string
+}
+
+func (t *uaTransport) RoundTrip(req *http.Request) (*http.Response, error) {
+	if req.Header.Get("User-Agent") == "" {
+		req = req.Clone(req.Context())
+		req.Header.Set("User-Agent", t.ua)
+	}
+	return t.next.RoundTrip(req)
+}
+
+// New returns an *http.Client tuned for the given concurrency level.
+// All requests get a default User-Agent of "limithit/<version>" unless the
+// caller sets User-Agent explicitly (e.g. via --header or cfg.UserAgent).
 func New(cfg Config, concurrency int) *http.Client {
 	base, ok := http.DefaultTransport.(*http.Transport)
 	var tr *http.Transport
@@ -42,9 +60,14 @@ func New(cfg Config, concurrency int) *http.Client {
 	tr.MaxConnsPerHost = concurrency * 2
 	tr.DisableKeepAlives = cfg.DisableKeepAlives
 
+	ua := cfg.UserAgent
+	if ua == "" {
+		ua = "limithit/" + version.Version
+	}
+
 	return &http.Client{
 		Timeout:   cfg.Timeout,
-		Transport: tr,
+		Transport: &uaTransport{next: tr, ua: ua},
 	}
 }
 
