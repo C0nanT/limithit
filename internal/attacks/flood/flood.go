@@ -40,6 +40,23 @@ func (f *Flood) Validate() error {
 	return nil
 }
 
+func (f *Flood) FormFields() []attacks.FormField {
+	url := ""
+	method := "GET"
+	total := "100"
+	concurrency := "10"
+	timeout := "10"
+	body := ""
+	return []attacks.FormField{
+		{Flag: "url", Label: "Target URL", Kind: attacks.FieldURL, Default: "", Value: &url},
+		{Flag: "method", Label: "HTTP method", Kind: attacks.FieldSelect, Default: "GET", Choices: attacks.HTTPMethodChoices(), Value: &method},
+		{Flag: "total", Label: "Total requests", Kind: attacks.FieldInt, Default: "100", Validate: attacks.ValidatePosInt, Value: &total},
+		{Flag: "concurrency", Label: "Concurrency (workers)", Kind: attacks.FieldInt, Default: "10", Validate: attacks.ValidatePosInt, Value: &concurrency},
+		{Flag: "timeout", Label: "Timeout (s)", Kind: attacks.FieldInt, Default: "10", Validate: attacks.ValidatePosInt, Value: &timeout},
+		{Flag: "body", Label: "Request body (optional)", Kind: attacks.FieldString, Default: "", Value: &body},
+	}
+}
+
 func (f *Flood) Run(ctx context.Context, base attacks.Base) (attacks.Report, error) {
 	build := func(ctx context.Context, _ int) (*http.Request, string, error) {
 		var body io.Reader
@@ -65,6 +82,7 @@ func (f *Flood) Run(ctx context.Context, base attacks.Base) (attacks.Report, err
 		Tag:         "flood",
 		Attack:      "flood",
 		Target:      base.URL,
+		ProgressCh:  base.ProgressCh,
 	}), nil
 }
 

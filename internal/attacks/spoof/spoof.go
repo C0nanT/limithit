@@ -56,6 +56,33 @@ func (s *Spoof) Validate() error {
 	return nil
 }
 
+func (s *Spoof) FormFields() []attacks.FormField {
+	url := ""
+	total := "1000"
+	concurrency := "20"
+	method := "GET"
+	timeout := "10"
+	ipPool := ""
+	xffHeader := "X-Forwarded-For"
+	pacing := "none"
+	rps := "50"
+	minDelayMs := "0"
+	maxDelayMs := "50"
+	return []attacks.FormField{
+		{Flag: "url", Label: "Target URL", Kind: attacks.FieldURL, Default: "", Value: &url},
+		{Flag: "total", Label: "Total requests", Kind: attacks.FieldInt, Default: "1000", Validate: attacks.ValidatePosInt, Value: &total},
+		{Flag: "concurrency", Label: "Concurrency (workers)", Kind: attacks.FieldInt, Default: "20", Validate: attacks.ValidatePosInt, Value: &concurrency},
+		{Flag: "method", Label: "HTTP method", Kind: attacks.FieldSelect, Default: "GET", Choices: attacks.HTTPMethodChoices(), Value: &method},
+		{Flag: "timeout", Label: "Timeout (s)", Kind: attacks.FieldInt, Default: "10", Validate: attacks.ValidatePosInt, Value: &timeout},
+		{Flag: "ip-pool", Label: "IP pool", Help: `CIDR "10.0.0.0/24", "file:ips.txt", or comma list (required)`, Kind: attacks.FieldString, Default: "", Value: &ipPool},
+		{Flag: "xff-header", Label: "XFF header name", Help: "Header used to inject the spoofed IP", Kind: attacks.FieldString, Default: "X-Forwarded-For", Value: &xffHeader},
+		{Flag: "pacing", Label: "Pacing", Kind: attacks.FieldSelect, Default: "none", Choices: []string{"none", "uniform", "poisson", "zipf"}, Value: &pacing},
+		{Flag: "rps", Label: "Target RPS (poisson)", Kind: attacks.FieldFloat, Default: "50", Validate: attacks.ValidatePosFloat, Value: &rps},
+		{Flag: "min-delay-ms", Label: "Min delay ms (uniform/zipf)", Kind: attacks.FieldInt, Default: "0", Validate: attacks.ValidateNonNegInt, Value: &minDelayMs},
+		{Flag: "max-delay-ms", Label: "Max delay ms (uniform/zipf)", Kind: attacks.FieldInt, Default: "50", Validate: attacks.ValidatePosInt, Value: &maxDelayMs},
+	}
+}
+
 func (s *Spoof) Run(ctx context.Context, base attacks.Base) (attacks.Report, error) {
 	pool, err := metrics.NewIPPoolFromSpec(s.ipPool)
 	if err != nil {
@@ -102,6 +129,7 @@ func (s *Spoof) Run(ctx context.Context, base attacks.Base) (attacks.Report, err
 		Tag:         fmt.Sprintf("spoof (pool=%d pacing=%s)", pool.Size(), s.pacing),
 		Attack:      "spoof",
 		Target:      base.URL,
+		ProgressCh:  base.ProgressCh,
 	})
 	return report, nil
 }

@@ -17,6 +17,7 @@ func (s *stubAttack) Validate() error       { return nil }
 func (s *stubAttack) Run(_ context.Context, _ attacks.Base) (attacks.Report, error) {
 	return nil, nil
 }
+func (s *stubAttack) FormFields() []attacks.FormField { return nil }
 
 func TestRegistryLookup(t *testing.T) {
 	attacks.Register("zzz-stub-a", func() attacks.Attack { return &stubAttack{"zzz-stub-a"} })

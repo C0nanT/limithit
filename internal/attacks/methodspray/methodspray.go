@@ -38,6 +38,23 @@ func (m *MethodSpray) Flags(fs *flag.FlagSet) {
 	fs.StringVar(&m.wordlist, "wordlist", "", "path-list file (overrides embedded default)")
 }
 
+func (m *MethodSpray) FormFields() []attacks.FormField {
+	url := ""
+	methods := "GET,POST,PUT,PATCH,DELETE,OPTIONS,HEAD"
+	wordlist := ""
+	total := "1000"
+	concurrency := "20"
+	timeout := "10"
+	return []attacks.FormField{
+		{Flag: "url", Label: "Base URL", Help: "Scheme + host only; paths come from the wordlist", Kind: attacks.FieldURL, Default: "", Value: &url},
+		{Flag: "methods", Label: "HTTP methods (comma-separated)", Help: "Cross-product of methods × wordlist paths is sprayed", Kind: attacks.FieldString, Default: "GET,POST,PUT,PATCH,DELETE,OPTIONS,HEAD", Value: &methods},
+		{Flag: "wordlist", Label: "Wordlist path (empty = built-in)", Kind: attacks.FieldString, Default: "", Value: &wordlist},
+		{Flag: "total", Label: "Total requests", Kind: attacks.FieldInt, Default: "1000", Validate: attacks.ValidatePosInt, Value: &total},
+		{Flag: "concurrency", Label: "Concurrency (workers)", Kind: attacks.FieldInt, Default: "20", Validate: attacks.ValidatePosInt, Value: &concurrency},
+		{Flag: "timeout", Label: "Timeout (s)", Kind: attacks.FieldInt, Default: "10", Validate: attacks.ValidatePosInt, Value: &timeout},
+	}
+}
+
 func (m *MethodSpray) Validate() error {
 	parts := strings.Split(m.methods, ",")
 	var valid []string
@@ -111,5 +128,6 @@ func (m *MethodSpray) Run(ctx context.Context, base attacks.Base) (attacks.Repor
 		Tag:         tag,
 		Attack:      "methodspray",
 		Target:      base.URL,
+		ProgressCh:  base.ProgressCh,
 	}), nil
 }

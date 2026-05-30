@@ -39,6 +39,23 @@ func (s *Slowloris) Flags(fs *flag.FlagSet) {
 	fs.BoolVar(&s.insecure, "insecure", false, "skip TLS verification")
 }
 
+func (s *Slowloris) FormFields() []attacks.FormField {
+	url := ""
+	connections := "200"
+	headerInterval := "10"
+	hold := "120"
+	dialTimeout := "5"
+	insecure := "false"
+	return []attacks.FormField{
+		{Flag: "url", Label: "Target URL", Kind: attacks.FieldURL, Default: "", Value: &url},
+		{Flag: "connections", Label: "Connections", Help: "Concurrent open connections to hold", Kind: attacks.FieldInt, Default: "200", Validate: attacks.ValidatePosInt, Value: &connections},
+		{Flag: "header-interval", Label: "Header interval (s)", Help: "Seconds between drip headers", Kind: attacks.FieldInt, Default: "10", Validate: attacks.ValidatePosInt, Value: &headerInterval},
+		{Flag: "hold", Label: "Hold duration (s)", Help: "Total hold duration per connection", Kind: attacks.FieldInt, Default: "120", Validate: attacks.ValidatePosInt, Value: &hold},
+		{Flag: "dial-timeout", Label: "Dial timeout (s)", Kind: attacks.FieldInt, Default: "5", Validate: attacks.ValidatePosInt, Value: &dialTimeout},
+		{Flag: "insecure", Label: "Skip TLS verification", Kind: attacks.FieldBool, Default: "false", Value: &insecure},
+	}
+}
+
 func (s *Slowloris) Validate() error {
 	if s.connections < 1 {
 		return errors.New("connections must be >= 1")

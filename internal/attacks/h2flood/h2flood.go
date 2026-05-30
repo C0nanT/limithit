@@ -53,6 +53,25 @@ func (h *H2Flood) Validate() error {
 	return nil
 }
 
+func (h *H2Flood) FormFields() []attacks.FormField {
+	url := ""
+	connections := "1"
+	streams := "100"
+	total := "100"
+	concurrency := "10"
+	method := "GET"
+	insecure := "false"
+	return []attacks.FormField{
+		{Flag: "url", Label: "Target URL (HTTPS for HTTP/2)", Help: "Use https:// to negotiate h2 via ALPN", Kind: attacks.FieldURL, Default: "", Value: &url},
+		{Flag: "connections", Label: "HTTP/2 connections", Help: "Number of long-lived TCP connections", Kind: attacks.FieldInt, Default: "1", Validate: attacks.ValidatePosInt, Value: &connections},
+		{Flag: "streams", Label: "Streams per connection", Help: "Exploits MaxConcurrentStreams gaps (try 100–1000)", Kind: attacks.FieldInt, Default: "100", Validate: attacks.ValidatePosInt, Value: &streams},
+		{Flag: "total", Label: "Total requests", Kind: attacks.FieldInt, Default: "100", Validate: attacks.ValidatePosInt, Value: &total},
+		{Flag: "concurrency", Label: "Concurrency (workers)", Kind: attacks.FieldInt, Default: "10", Validate: attacks.ValidatePosInt, Value: &concurrency},
+		{Flag: "method", Label: "HTTP method", Kind: attacks.FieldSelect, Default: "GET", Choices: attacks.HTTPMethodChoices(), Value: &method},
+		{Flag: "insecure", Label: "Skip TLS verification", Kind: attacks.FieldBool, Default: "false", Value: &insecure},
+	}
+}
+
 func (h *H2Flood) Run(ctx context.Context, base attacks.Base) (attacks.Report, error) {
 	// Build an HTTP/2-only transport. ForceAttemptHTTP2 negotiates h2 via ALPN
 	// for HTTPS targets. For plain HTTP (h2c) targets, use HTTPS or a proxy.
@@ -101,5 +120,6 @@ func (h *H2Flood) Run(ctx context.Context, base attacks.Base) (attacks.Report, e
 		Tag:         "h2flood",
 		Attack:      "h2flood",
 		Target:      base.URL,
+		ProgressCh:  base.ProgressCh,
 	}), nil
 }

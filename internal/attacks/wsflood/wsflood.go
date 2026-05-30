@@ -34,6 +34,23 @@ type WSFlood struct {
 func (w *WSFlood) Name() string     { return "wsflood" }
 func (w *WSFlood) Synopsis() string { return "WebSocket connection exhaustion (open and hold)" }
 
+func (w *WSFlood) FormFields() []attacks.FormField {
+	url := ""
+	connections := "200"
+	hold := "60"
+	messageRate := "0"
+	dialTimeout := "5"
+	insecure := "false"
+	return []attacks.FormField{
+		{Flag: "url", Label: "Target URL", Help: "Use http:// or ws:// for plain WS; https:// or wss:// for TLS", Kind: attacks.FieldURL, Default: "", Value: &url},
+		{Flag: "connections", Label: "WebSocket connections", Help: "Connections to open and hold", Kind: attacks.FieldInt, Default: "200", Validate: attacks.ValidatePosInt, Value: &connections},
+		{Flag: "hold", Label: "Hold duration (s)", Kind: attacks.FieldInt, Default: "60", Validate: attacks.ValidatePosInt, Value: &hold},
+		{Flag: "message-rate", Label: "Ping messages per second", Help: "0 = silent hold", Kind: attacks.FieldInt, Default: "0", Validate: attacks.ValidateNonNegInt, Value: &messageRate},
+		{Flag: "dial-timeout", Label: "Dial timeout (s)", Kind: attacks.FieldInt, Default: "5", Validate: attacks.ValidatePosInt, Value: &dialTimeout},
+		{Flag: "insecure", Label: "Skip TLS verification", Kind: attacks.FieldBool, Default: "false", Value: &insecure},
+	}
+}
+
 func (w *WSFlood) Flags(fs *flag.FlagSet) {
 	fs.IntVar(&w.connections, "connections", 200, "WebSocket connections to open and hold")
 	fs.IntVar(&w.hold, "hold", 60, "seconds to hold each connection open")

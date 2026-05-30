@@ -27,6 +27,9 @@ type Config struct {
 	Tag         string
 	Attack      string
 	Target      string
+	// ProgressCh receives periodic snapshots during the run if non-nil.
+	// The caller is responsible for closing it after Run returns.
+	ProgressCh chan<- metrics.Progress
 }
 
 func Run(ctx context.Context, hc *http.Client, build RequestBuilder, cfg Config) *metrics.Report {
@@ -51,6 +54,34 @@ func Run(ctx context.Context, hc *http.Client, build RequestBuilder, cfg Config)
 
 	start := time.Now()
 	collector.SetStartedAt(start)
+
+	// Progress emitter: ticks every 500 ms; caller closes ProgressCh after Run returns.
+	var progressWG sync.WaitGroup
+	progressDone := make(chan struct{})
+	if cfg.ProgressCh != nil {
+		progressWG.Add(1)
+		go func() {
+			defer progressWG.Done()
+			ticker := time.NewTicker(500 * time.Millisecond)
+			defer ticker.Stop()
+			emit := func() {
+				snap := collector.Snapshot(cfg.Total, time.Since(start))
+				select {
+				case cfg.ProgressCh <- snap:
+				default:
+				}
+			}
+			for {
+				select {
+				case <-ticker.C:
+					emit()
+				case <-progressDone:
+					emit() // final snapshot
+					return
+				}
+			}
+		}()
+	}
 
 	for i := 0; i < cfg.Concurrency; i++ {
 		wg.Add(1)
@@ -89,8 +120,15 @@ producer:
 	close(jobs)
 
 	wg.Wait()
-	dur := time.Since(start)
 
+	// Signal and wait for the progress emitter before returning so the caller
+	// can safely close ProgressCh without racing with a pending send.
+	if cfg.ProgressCh != nil {
+		close(progressDone)
+		progressWG.Wait()
+	}
+
+	dur := time.Since(start)
 	return metrics.Finalize(collector, dur)
 }
 

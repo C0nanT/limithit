@@ -41,6 +41,21 @@ func (r *Replay) Flags(fs *flag.FlagSet) {
 	fs.BoolVar(&r.loop, "loop", false, "loop through the request list until --total is reached")
 }
 
+func (r *Replay) FormFields() []attacks.FormField {
+	file := ""
+	url := ""
+	total := "0"
+	concurrency := "10"
+	loop := "false"
+	return []attacks.FormField{
+		{Flag: "file", Label: "Request file", Help: `HAR file or newline-delimited "METHOD URL" file`, Kind: attacks.FieldString, Default: "", Value: &file},
+		{Flag: "url", Label: "Base URL (report label)", Help: "Individual request URLs come from the file; this labels the report", Kind: attacks.FieldURL, Default: "", Value: &url},
+		{Flag: "total", Label: "Total requests (0 = file length)", Kind: attacks.FieldInt, Default: "0", Validate: attacks.ValidateNonNegInt, Value: &total},
+		{Flag: "concurrency", Label: "Concurrency (workers)", Kind: attacks.FieldInt, Default: "10", Validate: attacks.ValidatePosInt, Value: &concurrency},
+		{Flag: "loop", Label: "Loop through request list", Help: "Replays in a cycle until --total is reached", Kind: attacks.FieldBool, Default: "false", Value: &loop},
+	}
+}
+
 func (r *Replay) Validate() error {
 	if r.file == "" {
 		return errors.New("replay requires --file")
@@ -93,6 +108,7 @@ func (r *Replay) Run(ctx context.Context, base attacks.Base) (attacks.Report, er
 		Tag:         "replay",
 		Attack:      "replay",
 		Target:      base.URL,
+		ProgressCh:  base.ProgressCh,
 	}), nil
 }
 

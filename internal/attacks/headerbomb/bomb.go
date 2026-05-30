@@ -52,6 +52,32 @@ func (h *Headerbomb) Validate() error {
 	return nil
 }
 
+func (h *Headerbomb) FormFields() []attacks.FormField {
+	url := ""
+	total := "50"
+	concurrency := "5"
+	method := ""
+	timeout := "15"
+	headerCount := "500"
+	headerSize := "1024"
+	bodyStart := "1024"
+	bodyMax := "16777216"
+	bodyStep := "0"
+	methodChoices := append([]string{"auto (POST if body > 0, else GET)="}, attacks.HTTPMethodChoices()...)
+	return []attacks.FormField{
+		{Flag: "url", Label: "Target URL", Kind: attacks.FieldURL, Default: "", Value: &url},
+		{Flag: "total", Label: "Total requests", Kind: attacks.FieldInt, Default: "50", Validate: attacks.ValidatePosInt, Value: &total},
+		{Flag: "concurrency", Label: "Concurrency (workers)", Kind: attacks.FieldInt, Default: "5", Validate: attacks.ValidatePosInt, Value: &concurrency},
+		{Flag: "method", Label: "HTTP method", Kind: attacks.FieldSelect, Default: "", Choices: methodChoices, Value: &method},
+		{Flag: "timeout", Label: "Timeout (s)", Kind: attacks.FieldInt, Default: "15", Validate: attacks.ValidatePosInt, Value: &timeout},
+		{Flag: "header-count", Label: "Junk header count", Kind: attacks.FieldInt, Default: "500", Validate: attacks.ValidatePosInt, Value: &headerCount},
+		{Flag: "header-size", Label: "Bytes per junk header", Kind: attacks.FieldInt, Default: "1024", Validate: attacks.ValidatePosInt, Value: &headerSize},
+		{Flag: "body-start", Label: "Initial body size (bytes)", Kind: attacks.FieldInt, Default: "1024", Validate: attacks.ValidatePosInt, Value: &bodyStart},
+		{Flag: "body-max", Label: "Max body size (bytes)", Kind: attacks.FieldInt, Default: "16777216", Validate: attacks.ValidatePosInt, Value: &bodyMax},
+		{Flag: "body-step", Label: "Body growth step (0 = double)", Kind: attacks.FieldInt, Default: "0", Validate: attacks.ValidateNonNegInt, Value: &bodyStep},
+	}
+}
+
 func (h *Headerbomb) Run(ctx context.Context, base attacks.Base) (attacks.Report, error) {
 	bodyMax := h.bodyMax
 	if bodyMax < h.bodyStart {
@@ -120,6 +146,7 @@ func (h *Headerbomb) Run(ctx context.Context, base attacks.Base) (attacks.Report
 		Tag:         tag,
 		Attack:      "headerbomb",
 		Target:      base.URL,
+		ProgressCh:  base.ProgressCh,
 	})
 	return report, nil
 }

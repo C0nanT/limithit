@@ -7,6 +7,7 @@ import (
 	"io"
 	"os"
 	"os/signal"
+	"sync"
 	"syscall"
 	"time"
 
@@ -115,7 +116,26 @@ func runScenario(ctx context.Context, args []string, stdout, stderr io.Writer) i
 	return scenario.Run(ctx, cfg, stdout, stderr, *continueOnFail)
 }
 
-func runAttack(ctx context.Context, a attacks.Attack, args []string, stdout, stderr io.Writer) int {
+// outputConfig holds the rendering/output flags parsed by buildAttackBase.
+type outputConfig struct {
+	fmt          string
+	file         string
+	expectStatus int
+	compareTo    string
+	cmpP99       float64
+	cmp429       float64
+	live         bool
+	quiet        bool
+	noColor      bool
+	total        int
+}
+
+// buildAttackBase parses the common + attack-specific flags from args, populates
+// the attack struct via a.Flags + fs.Parse, and returns an attacks.Base ready for
+// a.Run(). It does not set ProgressCh — the caller sets that after inspecting outCfg.
+//
+// Returns (base, outCfg, 0) on success or (zero, nil, non-zero) on parse/validation error.
+func buildAttackBase(a attacks.Attack, args []string, stderr io.Writer) (attacks.Base, *outputConfig, int) {
 	fs := flag.NewFlagSet(a.Name(), flag.ContinueOnError)
 	fs.SetOutput(stderr)
 
@@ -133,6 +153,9 @@ func runAttack(ctx context.Context, a attacks.Attack, args []string, stdout, std
 		compareTo    = fs.String("compare", "", "path to baseline JSON; exits non-zero on regression")
 		cmpP99       = fs.Float64("compare-p99-threshold", 10.0, "p99 latency % increase that flags a regression")
 		cmp429       = fs.Float64("compare-429-threshold", 10.0, "429 ratio % decrease that flags a regression")
+		live         = fs.Bool("live", false, "print live progress to stderr during run")
+		quiet        = fs.Bool("quiet", false, "suppress progress and informational output; report goes to stdout")
+		noColor      = fs.Bool("no-color", false, "disable ANSI colour in output")
 		hdr          HeaderFlag
 	)
 	fs.Var(&hdr, "header", `custom header "Key: Value" (repeatable)`)
@@ -141,7 +164,7 @@ func runAttack(ctx context.Context, a attacks.Attack, args []string, stdout, std
 
 	urlArg, rest := extractURLArg(args)
 	if err := fs.Parse(rest); err != nil {
-		return 2
+		return attacks.Base{}, nil, 2
 	}
 
 	if *urlFlag == "" {
@@ -153,11 +176,11 @@ func runAttack(ctx context.Context, a attacks.Attack, args []string, stdout, std
 	}
 	if err := validateURL(*urlFlag); err != nil {
 		fmt.Fprintf(stderr, "error: %s\n", err)
-		return 2
+		return attacks.Base{}, nil, 2
 	}
 	if err := a.Validate(); err != nil {
 		fmt.Fprintf(stderr, "error: %s\n", err)
-		return 2
+		return attacks.Base{}, nil, 2
 	}
 
 	timeout := time.Duration(*timeoutSec) * time.Second
@@ -167,12 +190,12 @@ func runAttack(ctx context.Context, a attacks.Attack, args []string, stdout, std
 		rd, err := time.ParseDuration(*rampDur)
 		if err != nil {
 			fmt.Fprintf(stderr, "error: invalid --ramp-duration: %s\n", err)
-			return 2
+			return attacks.Base{}, nil, 2
 		}
 		p, err := metrics.NewRampPacer(*rampStart, float64(*concurrency), rd)
 		if err != nil {
 			fmt.Fprintf(stderr, "error: %s\n", err)
-			return 2
+			return attacks.Base{}, nil, 2
 		}
 		pacer = p
 	}
@@ -192,17 +215,60 @@ func runAttack(ctx context.Context, a attacks.Attack, args []string, stdout, std
 		},
 	}
 
+	outCfg := &outputConfig{
+		fmt:          *outputFmt,
+		file:         *outputFile,
+		expectStatus: *expectStatus,
+		compareTo:    *compareTo,
+		cmpP99:       *cmpP99,
+		cmp429:       *cmp429,
+		live:         *live,
+		quiet:        *quiet,
+		noColor:      *noColor,
+		total:        *total,
+	}
+
+	return base, outCfg, 0
+}
+
+func runAttack(ctx context.Context, a attacks.Attack, args []string, stdout, stderr io.Writer) int {
+	base, outCfg, code := buildAttackBase(a, args, stderr)
+	if code != 0 {
+		return code
+	}
+
+	// --live: create a progress channel and start a stderr printer goroutine.
+	var liveWG sync.WaitGroup
+	if outCfg.live && !outCfg.quiet {
+		progressCh := make(chan metrics.Progress, 4)
+		base.ProgressCh = progressCh
+		liveWG.Add(1)
+		go func() {
+			defer liveWG.Done()
+			printLiveProgress(progressCh, outCfg.total, stderr)
+		}()
+	}
+
 	rep, err := a.Run(ctx, base)
+
+	// Close progress channel so the live printer goroutine exits.
+	if base.ProgressCh != nil {
+		close(base.ProgressCh)
+		liveWG.Wait()
+	}
+
 	if err != nil {
 		fmt.Fprintf(stderr, "error: %s\n", err)
 		return 1
 	}
-	maybeInterrupted(ctx, stderr)
+	if !outCfg.quiet {
+		maybeInterrupted(ctx, stderr)
+	}
 
 	// resolve output writer
 	outW := stdout
-	if *outputFile != "" {
-		f, ferr := os.Create(*outputFile)
+	if outCfg.file != "" {
+		f, ferr := os.Create(outCfg.file)
 		if ferr != nil {
 			fmt.Fprintf(stderr, "error: open output file: %s\n", ferr)
 			return 1
@@ -213,7 +279,7 @@ func runAttack(ctx context.Context, a attacks.Attack, args []string, stdout, std
 
 	// render
 	if r, ok := rep.(*metrics.Report); ok {
-		switch *outputFmt {
+		switch outCfg.fmt {
 		case "json":
 			if err := report.JSON(outW, r); err != nil {
 				fmt.Fprintf(stderr, "error: json: %s\n", err)
@@ -232,30 +298,30 @@ func runAttack(ctx context.Context, a attacks.Attack, args []string, stdout, std
 	}
 
 	// --expect-status
-	if *expectStatus != 0 {
+	if outCfg.expectStatus != 0 {
 		if r, ok := rep.(*metrics.Report); ok {
-			if r.StatusCounts[*expectStatus] == 0 {
-				fmt.Fprintf(stderr, "assertion failed: expected HTTP %d but it was not observed\n", *expectStatus)
+			if r.StatusCounts[outCfg.expectStatus] == 0 {
+				fmt.Fprintf(stderr, "assertion failed: expected HTTP %d but it was not observed\n", outCfg.expectStatus)
 				return 1
 			}
 		}
 	}
 
 	// --compare
-	if *compareTo != "" {
+	if outCfg.compareTo != "" {
 		r, ok := rep.(*metrics.Report)
 		if !ok {
 			fmt.Fprintln(stderr, "warning: --compare not supported for this attack type")
 			return 0
 		}
-		baseline, berr := report.LoadBaseline(*compareTo)
+		baseline, berr := report.LoadBaseline(outCfg.compareTo)
 		if berr != nil {
 			fmt.Fprintf(stderr, "error: load baseline: %s\n", berr)
 			return 1
 		}
 		regressions := report.Compare(baseline, r, report.Thresholds{
-			P99PctIncrease:  *cmpP99,
-			R429PctDecrease: *cmp429,
+			P99PctIncrease:  outCfg.cmpP99,
+			R429PctDecrease: outCfg.cmp429,
 		})
 		if len(regressions) > 0 {
 			fmt.Fprintln(stderr, "\nregressions detected:")
@@ -268,6 +334,21 @@ func runAttack(ctx context.Context, a attacks.Attack, args []string, stdout, std
 	}
 
 	return 0
+}
+
+// printLiveProgress reads from ch and prints one-line progress updates to w
+// until the channel is closed. Progress goes to stderr so stdout stays pipe-clean.
+func printLiveProgress(ch <-chan metrics.Progress, total int, w io.Writer) {
+	for p := range ch {
+		pct := 0.0
+		if p.Total > 0 {
+			pct = float64(p.Sent) / float64(p.Total) * 100
+		}
+		fmt.Fprintf(w, "\r  %d/%d (%.0f%%)  %.1f rps  2xx:%d  429:%d  err:%d  %s   ",
+			p.Sent, p.Total, pct, p.RPS, p.Success, p.RateLimited, p.OtherErr,
+			p.Elapsed.Round(time.Second))
+	}
+	fmt.Fprintln(w)
 }
 
 func maybeInterrupted(ctx context.Context, w io.Writer) {

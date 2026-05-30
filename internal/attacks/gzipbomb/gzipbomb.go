@@ -33,6 +33,30 @@ func (g *GzipBomb) Flags(fs *flag.FlagSet) {
 	fs.BoolVar(&g.iUnderstand, "i-understand", false, "required safety acknowledgement to run this attack")
 }
 
+func (g *GzipBomb) FormFields() []attacks.FormField {
+	warn := "false"
+	url := ""
+	expandedMB := "10"
+	total := "10"
+	concurrency := "5"
+	method := "POST"
+	return []attacks.FormField{
+		{
+			Flag:    "i-understand",
+			Label:   "WARNING: Decompression amplification attack",
+			Help:    "This sends gzip bodies that expand large server-side.\nA vulnerable server that decompresses the body may crash or OOM.\nOnly use against systems you own or have explicit written authorisation to test.",
+			Kind:    attacks.FieldWarn,
+			Default: "false",
+			Value:   &warn,
+		},
+		{Flag: "url", Label: "Target URL", Kind: attacks.FieldURL, Default: "", Value: &url},
+		{Flag: "expanded-mb", Label: "Expanded body size (MB)", Help: "Uncompressed size per request the server must decompress", Kind: attacks.FieldInt, Default: "10", Validate: attacks.ValidatePosInt, Value: &expandedMB},
+		{Flag: "total", Label: "Total requests", Kind: attacks.FieldInt, Default: "10", Validate: attacks.ValidatePosInt, Value: &total},
+		{Flag: "concurrency", Label: "Concurrency (workers)", Kind: attacks.FieldInt, Default: "5", Validate: attacks.ValidatePosInt, Value: &concurrency},
+		{Flag: "method", Label: "HTTP method", Kind: attacks.FieldSelect, Default: "POST", Choices: attacks.HTTPMethodChoices(), Value: &method},
+	}
+}
+
 func (g *GzipBomb) Validate() error {
 	if !g.iUnderstand {
 		return errors.New("gzipbomb requires --i-understand flag: this attack may crash or OOM a server that decompresses the body")
@@ -74,6 +98,7 @@ func (g *GzipBomb) Run(ctx context.Context, base attacks.Base) (attacks.Report, 
 		Tag:         "gzipbomb",
 		Attack:      "gzipbomb",
 		Target:      base.URL,
+		ProgressCh:  base.ProgressCh,
 	}), nil
 }
 
